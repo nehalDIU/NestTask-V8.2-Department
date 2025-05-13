@@ -54,6 +54,27 @@ const URLS_TO_CACHE = [
   '/offline.html'
 ];
 
+// Skip specific URLs from service worker interception
+function shouldSkipFetchInterception(url: string): boolean {
+  try {
+    // Allow Vercel analytics to pass through
+    if (url.includes('vercel/insights') || 
+        url.includes('vercel/analytics') || 
+        url.includes('vitals.vercel-insights.com')) {
+      return true;
+    }
+    
+    // Allow Supabase API calls to pass through
+    if (url.includes('supabase.co')) {
+      return true;
+    }
+    
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Cache critical static assets with a Cache First strategy
 const staticAssetsStrategy = new CacheFirst({
   cacheName: 'static-assets-v3',
@@ -165,7 +186,7 @@ registerRoute(
   })
 );
 
-// Network Only for all API routes and analytics - never cache these
+// Network Only for all API routes - never cache API responses
 registerRoute(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ({ url }: { url: any }) => {
@@ -177,12 +198,15 @@ registerRoute(
       return false;
     }
     
-    // Match all API endpoints and analytics - never cache them
+    // Skip URLs we don't want to intercept
+    if (shouldSkipFetchInterception(url.href)) {
+      return false;
+    }
+    
+    // Match all API endpoints - never cache them
     return url.pathname.includes('/api/') || 
            url.pathname.includes('/rest/') ||
-           url.pathname.includes('/supabase/') ||
-           url.pathname.includes('/_vercel/insights') ||
-           url.pathname.includes('/vercel/insights');
+           url.pathname.includes('/supabase/');
   },
   new NetworkOnly()
 );

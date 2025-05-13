@@ -3,198 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NestTask - You are offline</title>
-  <link rel="icon" href="/icons/icon-192x192.png" type="image/png">
+  <title>NestTask - Offline</title>
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.ico" />
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f5f7fa;
+      background-color: #f5f5f5;
       color: #333;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      height: 100vh;
       margin: 0;
       padding: 20px;
       text-align: center;
-      line-height: 1.6;
     }
     .container {
       max-width: 500px;
-      padding: 30px;
-      background-color: #ffffff;
+      background-color: white;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     h1 {
-      margin-top: 0;
-      color: #3b82f6;
-      font-size: 28px;
+      color: #4f46e5;
+      margin-bottom: 10px;
     }
     p {
+      line-height: 1.6;
       margin-bottom: 20px;
-      color: #4b5563;
-    }
-    .logo {
-      width: 120px;
-      height: 120px;
-      margin-bottom: 20px;
-    }
-    .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      margin: 10px 0;
-    }
-    .btn:hover {
-      background-color: #2563eb;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-    }
-    .btn-secondary {
-      background-color: #f3f4f6;
-      color: #374151;
-    }
-    .btn-secondary:hover {
-      background-color: #e5e7eb;
-      box-shadow: 0 4px 12px rgba(55, 65, 81, 0.1);
+      color: #666;
     }
     .icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      color: #3b82f6;
+      font-size: 64px;
+      margin-bottom: 20px;
     }
-    footer {
-      margin-top: 40px;
+    .button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .button:hover {
+      background-color: #4338ca;
+    }
+    .info {
+      margin-top: 20px;
       font-size: 14px;
-      color: #6b7280;
-    }
-    .status {
-      display: block;
-      margin: 10px 0;
-      font-size: 14px;
-      color: #6b7280;
-    }
-    @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #1f2937;
-        color: #f3f4f6;
-      }
-      .container {
-        background-color: #111827;
-      }
-      h1 {
-        color: #60a5fa;
-      }
-      p {
-        color: #d1d5db;
-      }
-      .btn-secondary {
-        background-color: #374151;
-        color: #f3f4f6;
-      }
-      .btn-secondary:hover {
-        background-color: #4b5563;
-      }
-      footer {
-        color: #9ca3af;
-      }
-      .status {
-        color: #9ca3af;
-      }
+      color: #888;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="font-size: 80px; margin-bottom: 20px;">🛠️</div>
+    <div class="icon">📶</div>
     <h1>You're Offline</h1>
-    <p>It looks like you're not connected to the internet. NestTask needs an internet connection to work properly.</p>
-    <p>If you believe you should be online, please check your connection and try again.</p>
-    
-    <button class="btn" id="retry-button">
-      Try Again
-    </button>
-    <br>
-    <button class="btn btn-secondary" id="home-button">
-      Go to Home
-    </button>
-    
-    <span class="status" id="connection-status">Checking connection...</span>
+    <p>Don't worry! NestTask has saved your recent tasks and routines. You can still view your previously loaded content.</p>
+    <p>Some features may be limited until your connection is restored.</p>
+    <button class="button" onclick="window.location.reload()">Try Again</button>
+    <div class="info">
+      <p>If you were previously logged in, you can still access your cached tasks and routines.</p>
+    </div>
   </div>
-  
-  <footer>
-    &copy; NestTask - Department Version 8.2
-  </footer>
 
   <script>
-    // Check connection status
-    function updateConnectionStatus() {
-      const statusEl = document.getElementById('connection-status');
-      
-      if (navigator.onLine) {
-        statusEl.textContent = 'You are back online! Refreshing...';
-        statusEl.style.color = '#10b981'; // green
-        
-        // Reload after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        statusEl.textContent = 'You are still offline. Please check your connection.';
-        statusEl.style.color = '#ef4444'; // red
-      }
-    }
-    
-    // Initial check
-    updateConnectionStatus();
-    
-    // Listen for online/offline events
-    window.addEventListener('online', updateConnectionStatus);
-    window.addEventListener('offline', updateConnectionStatus);
-    
-    // Retry button
-    document.getElementById('retry-button').addEventListener('click', () => {
-      document.getElementById('connection-status').textContent = 'Checking connection...';
-      
-      // Try to fetch a small resource to truly test connectivity
-      fetch('/', { method: 'HEAD', cache: 'no-store' })
-        .then(() => {
-          document.getElementById('connection-status').textContent = 'Connection restored! Refreshing...';
-          document.getElementById('connection-status').style.color = '#10b981';
-          
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        })
-        .catch(() => {
-          document.getElementById('connection-status').textContent = 'Still unable to connect. Please check your network.';
-          document.getElementById('connection-status').style.color = '#ef4444';
-        });
+    // Check if we're back online
+    window.addEventListener('online', () => {
+      window.location.reload();
     });
-    
-    // Home button
-    document.getElementById('home-button').addEventListener('click', () => {
-      window.location.href = '/';
-    });
-    
-    // Try to recover service worker if it's stuck
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.active?.postMessage({
-          type: 'HEALTH_CHECK',
-          timestamp: Date.now()
-        });
-      }).catch(console.error);
-    }
   </script>
 </body>
 </html>

@@ -33,6 +33,16 @@
       "headers": { "cache-control": "public, max-age=0, must-revalidate" },
       "continue": true
     },
+    {
+      "src": "/super-admin/dashboard",
+      "dest": "/index.html",
+      "status": 200
+    },
+    {
+      "src": "/super-admin/(.*)",
+      "dest": "/index.html",
+      "status": 200
+    },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

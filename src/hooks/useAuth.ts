@@ -71,37 +71,6 @@ export function useAuth() {
         console.error('Error fetching user data:', userError);
       }
       
-      // Check first for super admin email - always prioritize this check
-      if (authUser.email === 'superadmin@nesttask.com') {
-        console.log('Super admin email detected, forcing super-admin role');
-        setUser({
-          id: authUser.id,
-          email: authUser.email!,
-          name: userData?.name || authUser.user_metadata?.name || 'Super Admin',
-          role: 'super-admin', // Force super-admin role for this email
-          createdAt: userData?.created_at || authUser.created_at,
-          avatar: userData?.avatar,
-          phone: userData?.phone || authUser.user_metadata?.phone,
-          studentId: userData?.student_id || authUser.user_metadata?.studentId,
-          departmentId: userData?.department_id || authUser.user_metadata?.departmentId,
-          batchId: userData?.batch_id || authUser.user_metadata?.batchId,
-          sectionId: userData?.section_id || authUser.user_metadata?.sectionId,
-          departmentName: userData?.departmentName,
-          batchName: userData?.batchName,
-          sectionName: userData?.sectionName
-        });
-        
-        // Also update the user metadata to ensure role persistence
-        await supabase.auth.updateUser({
-          data: {
-            ...authUser.user_metadata,
-            role: 'super-admin'
-          }
-        });
-        
-        return;
-      }
-      
       // Determine the correct role, prioritizing the database role if available
       let role = userData?.role || authUser.user_metadata?.role || 'user';
       

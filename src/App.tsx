@@ -534,17 +534,6 @@ export default function App() {
     }
   };
 
-  // Check for super-admin role and redirect if needed - helps with direct navigation
-  useEffect(() => {
-    if (user?.role === 'super-admin') {
-      console.log('Super admin role detected in App component, redirecting to super-admin dashboard');
-      // Use history API instead of window.location to prevent full page reload
-      if (window.location.pathname !== '/super-admin') {
-        window.history.pushState(null, '', '/super-admin');
-      }
-    }
-  }, [user?.role]);
-
   // Early returns based on loading state and authentication
   if (isLoading || authLoading || ((user?.role === 'admin' || user?.role === 'super-admin') && usersLoading)) {
     return <LoadingScreen minimumLoadTime={1000} showProgress={true} />;
@@ -578,6 +567,15 @@ export default function App() {
 
   // Check for super-admin role first
   if (user.role === 'super-admin') {
+    // Check if we're not already on the super admin dashboard
+    useEffect(() => {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/super-admin/dashboard') {
+        console.log('Redirecting super-admin to dashboard...');
+        window.location.href = '/super-admin/dashboard';
+      }
+    }, []);
+    
     return (
       <Suspense fallback={<LoadingScreen minimumLoadTime={300} />}>
         <SuperAdminDashboard />

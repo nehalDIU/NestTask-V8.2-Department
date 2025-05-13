@@ -410,13 +410,7 @@ export function mapDbUserToUser(dbUser: SupabaseUser): User {
   // Make sure we correctly handle role values, especially 'super-admin'
   let userRole: 'user' | 'admin' | 'super-admin' | 'section-admin' = 'user';
   
-  // Special check for superadmin@nesttask.com email
-  if (dbUser.email === 'superadmin@nesttask.com') {
-    userRole = 'super-admin';
-    console.log('Found superadmin@nesttask.com email, forcing super-admin role');
-  }
-  // Regular role checking
-  else if (dbUser.role === 'admin') {
+  if (dbUser.role === 'admin') {
     userRole = 'admin';
   } else if (dbUser.role === 'super-admin' || dbUser.role === 'super_admin') {
     userRole = 'super-admin';
@@ -432,7 +426,7 @@ export function mapDbUserToUser(dbUser: SupabaseUser): User {
     name: dbUser.name || (dbUser.username as string) || dbUser.email.split('@')[0],
     role: userRole,
     avatar: dbUser.avatar,
-    phone: dbUser.phone || '',  // Ensure phone always has a default value
+    phone: dbUser.phone,
     createdAt: dbUser.created_at || new Date().toISOString(),
     lastActive: dbUser.last_active,
     studentId: dbUser.student_id,
