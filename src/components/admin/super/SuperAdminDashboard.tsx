@@ -140,76 +140,31 @@ export function SuperAdminDashboard() {
     refreshAdmins
   } = useAdminUsers();
 
-  // Add enhanced recover functionality
+  // Replace the enhanced recovery functionality with a simple initialization effect
   useEffect(() => {
-    // Mark that super admin is loaded to help service worker with cache decisions
-    localStorage.setItem('super_admin_loaded', 'true');
-    sessionStorage.setItem('super_admin_loaded', 'true');
+    // Mark super admin status for proper cache handling
+    localStorage.setItem('is_super_admin', 'true');
+    sessionStorage.setItem('is_super_admin', 'true');
     
-    // Check for incoming path after a reload
-    const storedPath = sessionStorage.getItem('super_admin_path');
-    if (storedPath) {
-      console.log('Recovering from reload with stored path:', storedPath);
-      sessionStorage.removeItem('super_admin_path');
-      
-      // Handle specific path recovery if needed
-      if (storedPath.includes('/dashboard')) {
-        setActiveTab('admins');
-      } else if (storedPath.includes('/section-admins')) {
-        setActiveTab('section-admins');
-      } else if (storedPath.includes('/analytics')) {
-        setActiveTab('analytics');
-      } else if (storedPath.includes('/logs')) {
-        setActiveTab('logs');
-      } else if (storedPath.includes('/security')) {
-        setActiveTab('security');
-      }
+    // Force immediate data load on mount
+    refreshAdmins();
+    
+    // Clear any reload-related flags
+    sessionStorage.removeItem('super_admin_reloading');
+    sessionStorage.removeItem('super_admin_reload_count');
+    sessionStorage.removeItem('recovering_super_admin');
+    
+    // Handle path-specific tab selection if needed
+    if (window.location.pathname.includes('/section-admins')) {
+      setActiveTab('section-admins');
+    } else if (window.location.pathname.includes('/analytics')) {
+      setActiveTab('analytics');
+    } else if (window.location.pathname.includes('/logs')) {
+      setActiveTab('logs');
+    } else if (window.location.pathname.includes('/security')) {
+      setActiveTab('security');
     }
     
-    // Implement a keep-alive mechanism for the page
-    const keepAliveInterval = setInterval(() => {
-      // Check if content still exists
-      const mainContent = document.querySelector('main');
-      if (!mainContent || mainContent.childElementCount <= 2) {
-        console.log('Super admin dashboard content missing, attempting recovery');
-        
-        // Force data refresh
-        refreshAdmins();
-        
-        // If we have a super-admin-loaded flag but no content, it means we need to refresh
-        if (sessionStorage.getItem('super_admin_loaded') === 'true') {
-          console.log('Detected missing content after page was loaded, triggering reload');
-          sessionStorage.setItem('super_admin_reload_count', 
-            (parseInt(sessionStorage.getItem('super_admin_reload_count') || '0') + 1).toString());
-          
-          // If we've reloaded too many times, try a different recovery approach
-          if (parseInt(sessionStorage.getItem('super_admin_reload_count') || '0') > 3) {
-            console.log('Too many reload attempts, trying navigation reset');
-            sessionStorage.setItem('super_admin_reload_count', '0');
-            window.location.href = '/';
-            return;
-          }
-          
-          // Trigger a reload after setting some recovery context
-          sessionStorage.setItem('super_admin_reloading', 'true');
-          window.location.reload();
-        }
-      }
-    }, 5000); // Check every 5 seconds
-    
-    // Render content immediately on mount to prevent blank page
-    const activeContentDiv = document.querySelector('.dashboard-content');
-    if (!activeContentDiv || activeContentDiv.childElementCount === 0) {
-      console.log('Content area empty during mount, forcing immediate render');
-      // Force a synchronous refresh of admins data
-      setTimeout(() => {
-        refreshAdmins();
-      }, 100);
-    }
-    
-    return () => {
-      clearInterval(keepAliveInterval);
-    };
   }, [refreshAdmins, setActiveTab]);
 
   // Check for mobile view and update when window resizes

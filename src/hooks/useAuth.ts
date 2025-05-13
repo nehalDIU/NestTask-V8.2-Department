@@ -154,7 +154,7 @@ export function useAuth() {
       // Update auth status in service worker for proper caching
       updateAuthStatus(true);
       
-      // Special handling for super admin login
+      // Handle super admin login specially
       if (credentials.email === 'superadmin@nesttask.com') {
         console.log('Super admin login detected');
         
@@ -175,34 +175,18 @@ export function useAuth() {
           // Other fields if needed
         }
         
+        // Store super admin status to help service worker
+        localStorage.setItem('is_super_admin', 'true');
+        sessionStorage.setItem('is_super_admin', 'true');
+        
+        // Mark that authentication is complete
+        localStorage.setItem('auth_completed', 'true');
+        
+        // Set the user state immediately
         setUser(user);
         
-        // Store super admin status in sessionStorage for better recovery
-        sessionStorage.setItem('is_super_admin', 'true');
-        localStorage.setItem('is_super_admin', 'true');
-        
-        // Clear any data in IndexedDB or localStorage that might interfere
-        try {
-          if ('indexedDB' in window) {
-            // Open the database and clear authentication data
-            const dbRequest = indexedDB.open('nesttask-auth-storage', 1);
-            dbRequest.onsuccess = () => {
-              const db = dbRequest.result;
-              // Refresh admin authentication data
-              if (db.objectStoreNames.contains('admin')) {
-                const tx = db.transaction('admin', 'readwrite');
-                const store = tx.objectStore('admin');
-                store.put(JSON.stringify({ role: 'super-admin' }), 'role');
-                store.put(Date.now(), 'last_refresh');
-              }
-            };
-          }
-        } catch (e) {
-          console.warn('Error accessing IndexedDB:', e);
-        }
-        
-        // Force a clean reload to ensure proper page rendering after login
-        setTimeout(() => forceCleanReload(), 1000);
+        // Navigate directly to super admin dashboard instead of reloading
+        window.location.href = '/super-admin';
         
         return user;
       }

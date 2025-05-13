@@ -1,4 +1,5 @@
 const CACHE_NAME = 'nesttask-v3';
+const ADMIN_CACHE_NAME = 'nesttask-admin-v1'; // Special cache for admin assets
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
@@ -18,7 +19,10 @@ const STATIC_ASSETS = [
   '/search',
   '/routine',
   '/courses',
-  '/profile'
+  '/profile',
+  // Add super admin routes to static assets for reliable caching
+  '/super-admin',
+  '/super-admin/dashboard'
 ];
 
 // Routes that should never be cached (auth related)
@@ -105,9 +109,16 @@ function initBackgroundSync() {
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    Promise.all([
+      // Cache regular assets
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(STATIC_ASSETS);
+      }),
+      // Cache admin assets separately to survive cache clearing
+      caches.open(ADMIN_CACHE_NAME).then((cache) => {
+        return cache.addAll(ADMIN_ROUTES.map(route => route));
+      })
+    ])
   );
   self.skipWaiting();
   
@@ -308,18 +319,33 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         fetch(event.request)
           .then(response => {
-            // Store a copy in the cache
+            // Store a copy in both caches for redundancy
             const responseToCache = response.clone();
+            // Main cache
             caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache.clone());
+            });
+            // Admin-specific cache that survives cache clearing
+            caches.open(ADMIN_CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
             });
             return response;
           })
           .catch(async () => {
-            // First check for route-specific cache
-            const cachedResponse = await caches.match(event.request);
+            // First check the admin-specific cache
+            let cachedResponse = await caches.match(event.request, {
+              cacheName: ADMIN_CACHE_NAME
+            });
+            
             if (cachedResponse) {
-              console.log('Serving cached admin route:', url.pathname);
+              console.log('Serving from admin cache:', url.pathname);
+              return cachedResponse;
+            }
+            
+            // Then try the regular cache
+            cachedResponse = await caches.match(event.request);
+            if (cachedResponse) {
+              console.log('Serving from regular cache:', url.pathname);
               return cachedResponse;
             }
             
@@ -659,11 +685,11 @@ self.addEventListener('message', (event) => {
   } else if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
     console.log('CLEAR_ALL_CACHES message received, clearing all caches');
     
-    // Clear all caches except metadata
+    // Clear all caches except metadata and admin cache
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((cacheName) => cacheName !== 'sw-metadata')
+          .filter((cacheName) => cacheName !== 'sw-metadata' && cacheName !== ADMIN_CACHE_NAME)
           .map((cacheName) => caches.delete(cacheName))
       );
     }).then(() => {
@@ -672,7 +698,7 @@ self.addEventListener('message', (event) => {
         return cache.addAll(STATIC_ASSETS);
       });
     }).then(() => {
-      console.log('All caches cleared and static assets reloaded');
+      console.log('All caches cleared and static assets reloaded (admin cache preserved)');
       
       // Notify all clients
       self.clients.matchAll().then(clients => {
