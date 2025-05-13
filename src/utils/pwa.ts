@@ -368,7 +368,7 @@ export function setupKeepAlive() {
       });
       
       lastPingTime = Date.now();
-      console.log(`Service worker keep-alive ping #${pingCount} sent`);
+      console.debug(`Service worker keep-alive ping #${pingCount} sent`);
     } else if ('serviceWorker' in navigator) {
       // Service worker exists but not controlling the page
       console.warn('Service worker registered but not controlling the page, attempting recovery');
@@ -495,7 +495,7 @@ export function setupKeepAlive() {
         pingCount: ++pingCount
       });
       lastPingTime = Date.now();
-      console.log('Service worker keep-alive ping sent on visibility change');
+      console.debug('Service worker keep-alive ping sent on visibility change');
       
       // Check if we need recovery after returning from background
       const lastActiveTimestamp = localStorage.getItem('sw_last_active');

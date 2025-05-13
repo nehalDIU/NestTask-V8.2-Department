@@ -40,6 +40,15 @@ export function useTasks(userId: string | undefined) {
         // Always fetch fresh data from server, bypassing cache
         console.log('[Debug] Fetching fresh tasks from server');
         
+        // First make sure we're authenticated before proceeding
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) {
+          console.warn('[Debug] No active session found, forcing page reload');
+          // Force a page reload to restore the session
+          window.location.reload();
+          return;
+        }
+        
         // Ensure connection is established
         const isConnected = await testConnection();
         if (!isConnected) {
@@ -96,10 +105,27 @@ export function useTasks(userId: string | undefined) {
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           // Force refresh when the page becomes visible again
-          loadTasks();
+          console.log('[Debug] Tab visible again - refreshing tasks from useTasks hook');
+          try {
+            // First check if we're still authenticated
+            supabase.auth.getSession().then(({ data }) => {
+              if (data.session) {
+                // Only reload if we have a valid session
+                loadTasks();
+              } else {
+                console.warn('[Debug] No session found on visibility change');
+                // No need to reload the page here as App.tsx will handle this
+              }
+            });
+          } catch (error) {
+            console.error('[Error] Failed to refresh tasks on visibility change:', error);
+          }
         }
       };
 
+      // Remove any existing event listener to prevent duplicates
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Add the event listener
       document.addEventListener('visibilitychange', handleVisibilityChange);
 
       return () => {

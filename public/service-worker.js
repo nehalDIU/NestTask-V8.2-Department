@@ -516,7 +516,7 @@ async function safeCacheMatch(cacheName, request) {
 // Add a message handler for keep-alive pings
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'KEEP_ALIVE') {
-    console.log('Keep-alive ping received at', new Date(event.data.timestamp).toISOString());
+    console.debug('Keep-alive ping received at', new Date(event.data.timestamp).toISOString());
     
     // Update activity timestamp
     updateActivityTimestamp();
@@ -612,5 +612,5 @@ self.addEventListener('unhandledrejection', (event) => {
 // Set up a periodic ping to keep the service worker alive
 setInterval(() => {
   updateActivityTimestamp();
-  console.log('Self-ping to keep service worker alive at', new Date().toISOString());
+  console.debug('Self-ping to keep service worker alive at', new Date().toISOString());
 }, 20 * 60 * 1000); // Ping every 20 minutes

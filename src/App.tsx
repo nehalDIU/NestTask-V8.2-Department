@@ -27,7 +27,7 @@ import type { TaskCategory } from './types/task';
 import type { Task } from './types/task';
 import type { User } from './types/user';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { supabase } from './lib/supabase';
+import { supabase, testConnection } from './lib/supabase';
 import { preloadPredictedRoutes } from './utils/routePreloader';
 
 // Page import functions for prefetching
@@ -250,9 +250,42 @@ export default function App() {
         // Refresh data when page becomes visible after refresh
         if (user?.id) {
           console.log('Page visible - forcing task refresh');
-          refreshTasks();
-          // Force a re-render of taskStats when coming back to the page
-          setActivePage(prev => prev);
+          
+          // Use a try-catch to handle any errors during data refresh
+          try {
+            // Force a connection check using the imported testConnection
+            testConnection(true).then((isConnected: boolean) => {
+              if (isConnected) {
+                // Get current session
+                supabase.auth.getSession().then(({ data }) => {
+                  if (data.session) {
+                    // Refresh all data sources with proper error handling
+                    Promise.allSettled([
+                      refreshTasks(),
+                      // Add more data refresh calls here if needed
+                    ]).then(() => {
+                      // Force state update for UI refresh
+                      setActivePage(prev => prev);
+                    });
+                  } else {
+                    // If no session, redirect to login page
+                    window.location.href = '/auth';
+                  }
+                });
+              } else {
+                // If connection failed, reload the page to reset everything
+                console.warn('Connection test failed on visibility change, reloading page');
+                window.location.reload();
+              }
+            }).catch((error: any) => {
+              console.error('Error testing connection:', error);
+              window.location.reload();
+            });
+          } catch (error) {
+            console.error('Error refreshing data on visibility change:', error);
+            // Try to recover by resetting the state
+            setActivePage(prev => prev);
+          }
         }
       }
     };

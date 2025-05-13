@@ -265,9 +265,16 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
 }
 
 // Function to test connection with debouncing and caching
-export async function testConnection() {
-  // Return cached result if already initialized
-  if (isInitialized) return true;
+export async function testConnection(forceCheck = false) {
+  // If forcing a check because of tab visibility change, reset the initialized flag
+  if (forceCheck) {
+    isInitialized = false;
+    connectionAttempts = 0;
+    connectionPromise = null;
+  }
+
+  // Return cached result if already initialized and not forcing check
+  if (isInitialized && !forceCheck) return true;
   
   // Return existing promise if already attempting connection
   if (connectionPromise) return connectionPromise;
@@ -284,10 +291,27 @@ export async function testConnection() {
       connectionAttempts++;
       console.log('Testing Supabase connection, attempt', connectionAttempts);
       
+      // First verify authentication status
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        console.warn('No active session found in testConnection');
+        // Return false to indicate we need a page reload
+        return false;
+      }
+      
+      // Test database connection
       const { error } = await supabase.from('tasks').select('count', { count: 'exact', head: true });
       
       if (error) {
         console.error('Supabase connection error:', error.message);
+        
+        // If the error is an auth error, clear session and return false
+        if (error.code === 'PGRST301' || error.message.includes('JWT')) {
+          console.warn('Authentication error, clearing session');
+          await supabase.auth.signOut();
+          return false;
+        }
+        
         return false;
       }
       
