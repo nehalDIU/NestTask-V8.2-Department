@@ -567,15 +567,6 @@ export default function App() {
 
   // Check for super-admin role first
   if (user.role === 'super-admin') {
-    // Check if we're not already on the super admin dashboard
-    useEffect(() => {
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/super-admin/dashboard') {
-        console.log('Redirecting super-admin to dashboard...');
-        window.location.href = '/super-admin/dashboard';
-      }
-    }, []);
-    
     return (
       <Suspense fallback={<LoadingScreen minimumLoadTime={300} />}>
         <SuperAdminDashboard />

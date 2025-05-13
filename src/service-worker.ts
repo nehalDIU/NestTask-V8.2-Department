@@ -54,27 +54,6 @@ const URLS_TO_CACHE = [
   '/offline.html'
 ];
 
-// Skip specific URLs from service worker interception
-function shouldSkipFetchInterception(url: string): boolean {
-  try {
-    // Allow Vercel analytics to pass through
-    if (url.includes('vercel/insights') || 
-        url.includes('vercel/analytics') || 
-        url.includes('vitals.vercel-insights.com')) {
-      return true;
-    }
-    
-    // Allow Supabase API calls to pass through
-    if (url.includes('supabase.co')) {
-      return true;
-    }
-    
-    return false;
-  } catch (e) {
-    return false;
-  }
-}
-
 // Cache critical static assets with a Cache First strategy
 const staticAssetsStrategy = new CacheFirst({
   cacheName: 'static-assets-v3',
@@ -195,11 +174,6 @@ registerRoute(
         url.protocol === 'chrome:' ||
         url.protocol === 'edge:' ||
         url.protocol === 'brave:') {
-      return false;
-    }
-    
-    // Skip URLs we don't want to intercept
-    if (shouldSkipFetchInterception(url.href)) {
       return false;
     }
     

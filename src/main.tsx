@@ -1,4 +1,4 @@
-import { StrictMode, Suspense, lazy, useState, useEffect } from 'react';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 // Import CSS (Vite handles this correctly)
@@ -28,75 +28,12 @@ const App = lazy(() => import('./App').then(module => {
   return module;
 }));
 
-// Lazy load the SuperAdminDashboard component
-const SuperAdminDashboard = lazy(() => import('./components/admin/super/SuperAdminDashboard').then(module => {
-  return { default: module.SuperAdminDashboard };
-}));
-
-// Auth check wrapper component
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          // Check if user is super-admin
-          const { data: userData, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.session.user.id)
-            .single();
-          
-          if (userData && userData.role === 'super-admin') {
-            setIsAuthenticated(true);
-          } else {
-            // Redirect to home if not super-admin
-            window.location.href = '/';
-          }
-        } else {
-          // Redirect to auth if not logged in
-          window.location.href = '/auth';
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/auth';
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (loading) {
-    return <LoadingScreen minimumLoadTime={500} showProgress={true} />;
-  }
-
-  return isAuthenticated ? children : null;
-};
-
 // Define app routes
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
     children: []
-  },
-  {
-    path: '/super-admin/dashboard',
-    element: 
-      <ProtectedRoute>
-        <Suspense fallback={<LoadingScreen minimumLoadTime={300} />}>
-          <SuperAdminDashboard />
-        </Suspense>
-      </ProtectedRoute>
   },
   {
     path: '/auth',

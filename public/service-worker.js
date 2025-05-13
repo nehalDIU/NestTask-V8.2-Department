@@ -152,38 +152,10 @@ function shouldCacheAtRuntime(url) {
       return false;
     }
     
-    // Don't cache Vercel analytics requests
-    if (url.includes('vercel/insights') || 
-        url.includes('vercel/analytics') || 
-        url.includes('vitals.vercel-insights.com')) {
-      return false;
-    }
-    
     // Check if the URL matches any of our patterns
     return RUNTIME_CACHE_PATTERNS.some(pattern => pattern.test(url));
   } catch (error) {
     console.error('Error checking URL for caching:', error, url);
-    return false;
-  }
-}
-
-// Function to determine if a URL should be skipped entirely from service worker interception
-function shouldSkipInterception(url) {
-  try {
-    // Skip Vercel analytics
-    if (url.includes('vercel/insights') || 
-        url.includes('vercel/analytics') || 
-        url.includes('vitals.vercel-insights.com')) {
-      return true;
-    }
-    
-    // Skip Supabase API calls
-    if (url.includes('supabase.co')) {
-      return true;
-    }
-    
-    return false;
-  } catch (e) {
     return false;
   }
 }
@@ -198,8 +170,6 @@ const SPA_ROUTES = [
   '/study-materials',
   '/routine',
   '/admin',
-  '/super-admin',
-  '/super-admin/dashboard',
   '/settings',
   '/profile',
 ];
@@ -209,83 +179,75 @@ self.addEventListener('fetch', (event) => {
   // Update activity timestamp on fetch events
   updateActivityTimestamp();
   
-  try {
-    const url = event.request.url;
-    
-    // Skip URLs that should bypass service worker interception completely
-    if (shouldSkipInterception(url)) {
-      return;
-    }
-    
-    // Handle non-GET requests with background sync for offline support
-    if (event.request.method !== 'GET') {
-      // Process API requests for background sync when offline
-      if (
-        event.request.url.includes('/api/tasks') || 
-        event.request.url.includes('/api/routines') || 
-        event.request.url.includes('/api/courses') || 
-        event.request.url.includes('/api/teachers')
-      ) {
-        // Only use background sync if offline and queues are available
-        if (!self.navigator.onLine && 'workbox' in self) {
-          const url = new URL(event.request.url);
-          
-          // Choose the appropriate queue based on the API endpoint
-          let queue;
-          if (url.pathname.includes('/tasks')) {
-            queue = taskQueue;
-          } else if (url.pathname.includes('/routines')) {
-            queue = routineQueue;
-          } else if (url.pathname.includes('/courses') || url.pathname.includes('/teachers')) {
-            queue = courseTeacherQueue;
-          }
-          
-          // Add to queue if available
-          if (queue) {
-            event.respondWith(
-              fetch(event.request.clone())
-                .catch((error) => {
-                  console.log('Queuing failed request for background sync', error);
-                  queue.pushRequest({ request: event.request });
-                  return new Response(JSON.stringify({ 
-                    status: 'queued',
-                    message: 'Request queued for background sync'
-                  }), {
-                    headers: { 'Content-Type': 'application/json' },
-                    status: 202
-                  });
-                })
-            );
-            return;
-          }
+  // Handle non-GET requests with background sync for offline support
+  if (event.request.method !== 'GET') {
+    // Process API requests for background sync when offline
+    if (
+      event.request.url.includes('/api/tasks') || 
+      event.request.url.includes('/api/routines') || 
+      event.request.url.includes('/api/courses') || 
+      event.request.url.includes('/api/teachers')
+    ) {
+      // Only use background sync if offline and queues are available
+      if (!self.navigator.onLine && 'workbox' in self) {
+        const url = new URL(event.request.url);
+        
+        // Choose the appropriate queue based on the API endpoint
+        let queue;
+        if (url.pathname.includes('/tasks')) {
+          queue = taskQueue;
+        } else if (url.pathname.includes('/routines')) {
+          queue = routineQueue;
+        } else if (url.pathname.includes('/courses') || url.pathname.includes('/teachers')) {
+          queue = courseTeacherQueue;
+        }
+        
+        // Add to queue if available
+        if (queue) {
+          event.respondWith(
+            fetch(event.request.clone())
+              .catch((error) => {
+                console.log('Queuing failed request for background sync', error);
+                queue.pushRequest({ request: event.request });
+                return new Response(JSON.stringify({ 
+                  status: 'queued',
+                  message: 'Request queued for background sync'
+                }), {
+                  headers: { 'Content-Type': 'application/json' },
+                  status: 202
+                });
+              })
+          );
+          return;
         }
       }
-      
-      // For other non-GET requests, proceed normally
-      return;
     }
+    
+    // For other non-GET requests, proceed normally
+    return;
+  }
 
-    // Parse the URL for further processing
-    const urlObj = new URL(event.request.url);
+  try {
+    const url = new URL(event.request.url);
 
     // Skip unsupported URL schemes
-    if (urlObj.protocol === 'chrome-extension:' || 
-        urlObj.protocol === 'chrome:' ||
-        urlObj.protocol === 'edge:' ||
-        urlObj.protocol === 'brave:' ||
-        urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+    if (url.protocol === 'chrome-extension:' || 
+        url.protocol === 'chrome:' ||
+        url.protocol === 'edge:' ||
+        url.protocol === 'brave:' ||
+        url.protocol !== 'http:' && url.protocol !== 'https:') {
       return;
     }
 
     // Skip Supabase API requests (let them go to network)
-    if (urlObj.hostname.includes('supabase.co')) {
+    if (url.hostname.includes('supabase.co')) {
       return;
     }
 
     // Special handling for SPA routes - always serve index.html
     if (event.request.mode === 'navigate') {
       const isSpaRoute = SPA_ROUTES.some(route => 
-        urlObj.pathname === route || urlObj.pathname.startsWith(`${route}/`)
+        url.pathname === route || url.pathname.startsWith(`${route}/`)
       );
       
       if (isSpaRoute) {
@@ -307,7 +269,7 @@ self.addEventListener('fetch', (event) => {
 
     // Check for module scripts
     const isModuleScript = event.request.destination === 'script' && 
-                           (urlObj.pathname.endsWith('.mjs') || urlObj.pathname.includes('assets/'));
+                           (url.pathname.endsWith('.mjs') || url.pathname.includes('assets/'));
     
     // For module scripts, ensure proper handling
     if (isModuleScript) {
