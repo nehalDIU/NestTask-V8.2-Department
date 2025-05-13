@@ -268,7 +268,8 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      <Analytics />
+      {/* Only include Analytics in production environment */}
+      {import.meta.env.PROD && <Analytics />}
     </Suspense>
   </StrictMode>
 );

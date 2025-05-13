@@ -216,3 +216,22 @@ Task completed ✅
 - When using React Router with lazy-loaded components, ensure proper ordering of definitions
 - Always check component prop requirements when setting up routes directly in the router configuration
 - When refactoring, be mindful of circular dependencies between lazy-loaded components and their usage
+
+## Current Task: Fix Vercel Analytics Script Error
+
+Task: Fix the "ERR_ABORTED 404 (Not Found)" error when loading the Vercel Analytics script.
+
+[X] Identified the issue: Vercel Analytics script failing to load with a 404 error
+[X] Fixed the issue by conditionally rendering the Analytics component only in production environment
+
+Key changes:
+1. Updated the main.tsx file to only include the Analytics component when in production mode
+2. Used the import.meta.env.PROD flag to conditionally render the component
+
+Task completed ✅
+
+## Lessons learned
+- Always conditionally render third-party analytics and monitoring scripts based on the environment
+- Use Vite's import.meta.env.PROD flag to detect production environment for conditional script loading
+- Analytics scripts often have different behavior in development vs production, so conditionally including them prevents unnecessary errors
+- External scripts that return 404 errors should be conditionally loaded rather than allowing them to throw console errors
