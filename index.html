@@ -42,6 +42,15 @@
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="dns-prefetch" href="https://api.supabase.co" />
     
+    <!-- Analytics fallback to prevent errors when blocked -->
+    <script>
+      // Create a fallback for Vercel Analytics to prevent errors
+      window.va = window.va || function() {};
+      ['track', 'identify', 'page', 'event', 'init'].forEach(function(method) {
+        window.va[method] = window.va[method] || function() {};
+      });
+    </script>
+    
     <!-- PWA assets -->
     <link rel="icon" type="image/svg+xml" href="/icons/icon-192x192.png" />
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
@@ -193,6 +202,24 @@
     
     <!-- Use direct path with type="module" for proper handling by Vite -->
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Analytics fallback script - loads only when needed -->
+    <script>
+      // Handle analytics script errors by providing a fallback
+      window.addEventListener('error', function(event) {
+        if (event.filename && 
+            (event.filename.includes('vercel') || event.filename.includes('analytics'))) {
+          // If analytics script fails, load the fallback
+          const fallbackScript = document.createElement('script');
+          fallbackScript.src = '/noop.js';
+          document.head.appendChild(fallbackScript);
+          
+          // Prevent the error from showing in console
+          event.preventDefault();
+          console.info('Analytics script blocked or failed to load. Using fallback.');
+        }
+      }, true);
+    </script>
     
     <script>
       // Watch for dark mode changes in the system

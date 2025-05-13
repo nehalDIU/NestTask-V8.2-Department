@@ -1,0 +1,5 @@
+# Handle blocked analytics requests by redirecting to noop.js
+/_vercel/insights/* /noop.js 200
+
+# Keep the original pathname in the URL so that the client can still use it
+/* /:splat 200 

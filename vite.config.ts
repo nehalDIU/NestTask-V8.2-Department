@@ -84,6 +84,22 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          // Add Vercel analytics endpoint to cache, with network-first strategy
+          {
+            urlPattern: /^https:\/\/vitals\.vercel-insights\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'vercel-analytics-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              networkTimeoutSeconds: 3 // Timeout after 3 seconds
+            }
           }
         ]
       }
@@ -158,6 +174,11 @@ export default defineConfig({
               id.includes('node_modules/d3/')) {
             return 'charts';
           }
+          
+          // Put Vercel analytics in its own chunk for better caching
+          if (id.includes('node_modules/@vercel/analytics/')) {
+            return 'analytics';
+          }
         },
         // Ensure proper file types and names
         assetFileNames: (assetInfo) => {
@@ -201,7 +222,8 @@ export default defineConfig({
       'react-router-dom',
       'recharts'
     ],
-    exclude: ['@vercel/analytics']
+    // Don't exclude Vercel analytics to ensure it's properly optimized
+    exclude: []
   },
   // Improve dev server performance
   server: {
