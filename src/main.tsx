@@ -13,7 +13,6 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
-import { AnalyticsProvider } from './components/AnalyticsProvider';
 
 // Performance optimizations initialization
 const startTime = performance.now();
@@ -28,20 +27,6 @@ const App = lazy(() => import('./App').then(module => {
   console.debug(`App component loaded in ${loadTime.toFixed(2)}ms`);
   return module;
 }));
-
-// Create a custom Analytics wrapper to handle loading errors gracefully
-const AnalyticsWrapper = () => {
-  if (!import.meta.env.PROD) {
-    return null;
-  }
-  
-  try {
-    return <Analytics debug={false} />;
-  } catch (error) {
-    console.warn('Vercel Analytics failed to load:', error);
-    return null;
-  }
-};
 
 // Define app routes
 const router = createBrowserRouter([
@@ -283,7 +268,8 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      <AnalyticsProvider />
+      {/* Only include Analytics in production environment */}
+      {import.meta.env.PROD && <Analytics />}
     </Suspense>
   </StrictMode>
 );

@@ -42,21 +42,6 @@
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="dns-prefetch" href="https://api.supabase.co" />
     
-    <!-- Analytics fallback to prevent errors when blocked or missing -->
-    <script>
-      // Create a fallback for Vercel Analytics to prevent errors
-      window.va = window.va || function() {};
-      ['track', 'identify', 'page', 'event', 'init', 'beforeSend', 'setAnonymousId', 'middleware'].forEach(function(method) {
-        window.va[method] = window.va[method] || function() { return window.va; };
-      });
-      
-      // Disable caching for analytics requests
-      window.analyticsDisableCache = true;
-    </script>
-    
-    <!-- Preload mock analytics script -->
-    <link rel="preload" href="/vercel-analytics-mock.js" as="script" />
-    
     <!-- PWA assets -->
     <link rel="icon" type="image/svg+xml" href="/icons/icon-192x192.png" />
     <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
@@ -208,66 +193,6 @@
     
     <!-- Use direct path with type="module" for proper handling by Vite -->
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Analytics fallback script - loads only when needed -->
-    <script>
-      // Load our fallback script preemptively
-      function loadAnalyticsFallback() {
-        const script = document.createElement('script');
-        script.src = '/vercel-analytics-mock.js?' + Date.now(); // Add cache buster
-        script.async = true;
-        script.id = 'vercel-analytics-fallback';
-        document.head.appendChild(script);
-      }
-      
-      // Handle analytics script errors by providing a fallback
-      window.addEventListener('error', function(event) {
-        if (event.filename && 
-            (event.filename.includes('vercel') || 
-             event.filename.includes('insights') || 
-             event.filename.includes('analytics'))) {
-          // If analytics script fails, load the fallback
-          loadAnalyticsFallback();
-          
-          // Prevent the error from showing in console
-          event.preventDefault();
-          console.info('Analytics script blocked or failed to load. Using fallback.');
-          return true;
-        }
-        return false;
-      }, true);
-      
-      // Add no-cache headers to fetch requests for analytics
-      const originalFetch = window.fetch;
-      if (originalFetch) {
-        window.fetch = function(input, init) {
-          if (typeof input === 'string' && 
-              (input.includes('vercel') || input.includes('insights') || input.includes('analytics'))) {
-            
-            // Add random param to prevent caching
-            const url = new URL(input, window.location.origin);
-            url.searchParams.set('_nocache', Date.now().toString());
-            input = url.toString();
-            
-            // Add no-cache headers
-            init = {
-              ...init,
-              headers: {
-                ...init?.headers,
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-              }
-            };
-          }
-          
-          return originalFetch.call(window, input, init);
-        };
-      }
-      
-      // Preload the fallback script
-      loadAnalyticsFallback();
-    </script>
     
     <script>
       // Watch for dark mode changes in the system

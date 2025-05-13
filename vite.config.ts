@@ -27,9 +27,7 @@ export default defineConfig({
         'robots.txt', 
         'icons/*.png',
         'manifest.json',
-        'offline.html',
-        'noop.js',
-        'vercel-analytics-mock.js'
+        'offline.html'
       ],
       manifest: {
         name: 'NestTask',
@@ -58,8 +56,6 @@ export default defineConfig({
       workbox: {
         clientsClaim: true,
         skipWaiting: true,
-        // Disable caching for analytics endpoints
-        navigateFallbackDenylist: [/\/_vercel\/insights\/.*/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -86,19 +82,6 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
-              }
-            }
-          },
-          // Use network-only for Vercel analytics to avoid caching issues
-          {
-            urlPattern: /^https:\/\/vitals\.vercel-insights\.com\/.*/i,
-            handler: 'NetworkOnly',
-            options: {
-              backgroundSync: {
-                name: 'analytics-queue',
-                options: {
-                  maxRetentionTime: 24 * 60 // Retry for up to 24 hours (in minutes)
-                }
               }
             }
           }
@@ -175,11 +158,6 @@ export default defineConfig({
               id.includes('node_modules/d3/')) {
             return 'charts';
           }
-          
-          // Put Vercel analytics in its own chunk for better caching
-          if (id.includes('node_modules/@vercel/analytics/')) {
-            return 'analytics';
-          }
         },
         // Ensure proper file types and names
         assetFileNames: (assetInfo) => {
@@ -223,8 +201,7 @@ export default defineConfig({
       'react-router-dom',
       'recharts'
     ],
-    // Don't exclude Vercel analytics to ensure it's properly optimized
-    exclude: []
+    exclude: ['@vercel/analytics']
   },
   // Improve dev server performance
   server: {
@@ -239,21 +216,13 @@ export default defineConfig({
       "Access-Control-Allow-Origin": "*",
       "Cross-Origin-Embedder-Policy": "credentialless",
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Resource-Policy": "cross-origin",
-      // Add no-cache headers for analytics endpoints
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+      "Cross-Origin-Resource-Policy": "cross-origin"
     }
   },
   // Improve preview server performance
   preview: {
     port: 4173,
     strictPort: true,
-    headers: {
-      // Prevent caching in preview mode
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      "Pragma": "no-cache",
-      "Expires": "0"
-    }
   },
   // Speed up first dev startup by caching
   cacheDir: 'node_modules/.vite'
