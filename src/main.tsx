@@ -1,6 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Analytics } from '@vercel/analytics/react';
+// Import Analytics only when in production
+import React from 'react';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 // Import CSS (Vite handles this correctly)
 import './index.css';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -8,8 +10,6 @@ import { initPWA } from '@/utils/pwa';
 import { prefetchResources, prefetchAsset, prefetchApiData } from '@/utils/prefetch';
 // Use normal import without extension, the path alias will handle it correctly
 import { STORES } from '@/utils/offlineStorage';
-import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
@@ -27,6 +27,11 @@ const App = lazy(() => import('./App').then(module => {
   console.debug(`App component loaded in ${loadTime.toFixed(2)}ms`);
   return module;
 }));
+
+// Conditionally import Analytics only in production
+const Analytics = import.meta.env.PROD 
+  ? lazy(() => import('@vercel/analytics/react').then(mod => ({ default: mod.Analytics })))
+  : () => null;
 
 // Define app routes
 const router = createBrowserRouter([
@@ -268,7 +273,7 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      {/* Only include Analytics in production environment */}
+      {/* Only include Analytics in production environment with lazy loading */}
       {import.meta.env.PROD && <Analytics />}
     </Suspense>
   </StrictMode>

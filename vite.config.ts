@@ -201,7 +201,8 @@ export default defineConfig({
       'react-router-dom',
       'recharts'
     ],
-    exclude: ['@vercel/analytics']
+    // Don't exclude Vercel Analytics as it causes 404 errors in dev mode
+    // exclude: ['@vercel/analytics']
   },
   // Improve dev server performance
   server: {
