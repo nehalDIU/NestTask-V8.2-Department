@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, BarChart2, FileText, Shield, LogOut, ChevronLeft, 
   Clock, CheckCircle, AlertCircle, ArrowUpRight, User, Settings,
@@ -140,45 +140,77 @@ export function SuperAdminDashboard() {
     refreshAdmins
   } = useAdminUsers();
 
-  // Add page recovery mechanism
+  // Add enhanced recover functionality
   useEffect(() => {
-    // Check if we're recovering from a refresh
-    const isRecovering = sessionStorage.getItem('recovering_super_admin');
+    // Mark that super admin is loaded to help service worker with cache decisions
+    localStorage.setItem('super_admin_loaded', 'true');
+    sessionStorage.setItem('super_admin_loaded', 'true');
     
-    if (isRecovering) {
-      console.log('Recovering from page refresh in Super Admin Dashboard');
-      sessionStorage.removeItem('recovering_super_admin');
+    // Check for incoming path after a reload
+    const storedPath = sessionStorage.getItem('super_admin_path');
+    if (storedPath) {
+      console.log('Recovering from reload with stored path:', storedPath);
+      sessionStorage.removeItem('super_admin_path');
       
-      // Force a data refresh
-      refreshAdmins();
-      
-      // If the page still looks blank after a short delay, force another reload
-      const blankPageTimeout = setTimeout(() => {
-        const mainContent = document.querySelector('main');
-        // If main content appears empty or has very little content, reload
-        if (mainContent && mainContent.childElementCount <= 2) {
-          console.log('Content appears to be missing, forcing reload');
-          sessionStorage.setItem('recovering_super_admin', 'true');
-          window.location.reload();
-        }
-      }, 1500);
-      
-      return () => clearTimeout(blankPageTimeout);
-    } else {
-      // Mark that we've loaded the dashboard for potential recovery
-      sessionStorage.setItem('super_admin_loaded', 'true');
+      // Handle specific path recovery if needed
+      if (storedPath.includes('/dashboard')) {
+        setActiveTab('admins');
+      } else if (storedPath.includes('/section-admins')) {
+        setActiveTab('section-admins');
+      } else if (storedPath.includes('/analytics')) {
+        setActiveTab('analytics');
+      } else if (storedPath.includes('/logs')) {
+        setActiveTab('logs');
+      } else if (storedPath.includes('/security')) {
+        setActiveTab('security');
+      }
     }
     
-    // Handle beforeunload to detect refreshes
-    const handleBeforeUnload = () => {
-      sessionStorage.setItem('recovering_super_admin', 'true');
-    };
+    // Implement a keep-alive mechanism for the page
+    const keepAliveInterval = setInterval(() => {
+      // Check if content still exists
+      const mainContent = document.querySelector('main');
+      if (!mainContent || mainContent.childElementCount <= 2) {
+        console.log('Super admin dashboard content missing, attempting recovery');
+        
+        // Force data refresh
+        refreshAdmins();
+        
+        // If we have a super-admin-loaded flag but no content, it means we need to refresh
+        if (sessionStorage.getItem('super_admin_loaded') === 'true') {
+          console.log('Detected missing content after page was loaded, triggering reload');
+          sessionStorage.setItem('super_admin_reload_count', 
+            (parseInt(sessionStorage.getItem('super_admin_reload_count') || '0') + 1).toString());
+          
+          // If we've reloaded too many times, try a different recovery approach
+          if (parseInt(sessionStorage.getItem('super_admin_reload_count') || '0') > 3) {
+            console.log('Too many reload attempts, trying navigation reset');
+            sessionStorage.setItem('super_admin_reload_count', '0');
+            window.location.href = '/';
+            return;
+          }
+          
+          // Trigger a reload after setting some recovery context
+          sessionStorage.setItem('super_admin_reloading', 'true');
+          window.location.reload();
+        }
+      }
+    }, 5000); // Check every 5 seconds
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Render content immediately on mount to prevent blank page
+    const activeContentDiv = document.querySelector('.dashboard-content');
+    if (!activeContentDiv || activeContentDiv.childElementCount === 0) {
+      console.log('Content area empty during mount, forcing immediate render');
+      // Force a synchronous refresh of admins data
+      setTimeout(() => {
+        refreshAdmins();
+      }, 100);
+    }
+    
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearInterval(keepAliveInterval);
     };
-  }, [refreshAdmins]);
+  }, [refreshAdmins, setActiveTab]);
 
   // Check for mobile view and update when window resizes
   useEffect(() => {
@@ -672,7 +704,7 @@ export function SuperAdminDashboard() {
         </header>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 dashboard-content">
           {/* Main content based on active tab */}
             {activeTab === 'admins' && (
                 <AdminManagement

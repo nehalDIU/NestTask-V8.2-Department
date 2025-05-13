@@ -199,6 +199,13 @@ const SPA_ROUTES = [
   '/super-admin/settings'
 ];
 
+// SPA Routes that require special handling (like admin routes)
+const ADMIN_ROUTES = [
+  '/super-admin',
+  '/super-admin/dashboard',
+  '/super-admin/settings'
+];
+
 // Fetch event - stale-while-revalidate strategy for assets, network-first for API
 self.addEventListener('fetch', (event) => {
   // Update activity timestamp on fetch events
@@ -286,6 +293,46 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             return caches.match('/index.html')
               .then(response => response || new Response('Not available', { status: 503 }));
+          })
+      );
+      return;
+    }
+
+    // Special handling for admin routes - always use network first with fallback
+    const isAdminRoute = ADMIN_ROUTES.some(route => 
+      url.pathname === route || url.pathname.startsWith(`${route}/`)
+    );
+    
+    if (isAdminRoute) {
+      console.log('Admin route detected:', url.pathname);
+      event.respondWith(
+        fetch(event.request)
+          .then(response => {
+            // Store a copy in the cache
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+            return response;
+          })
+          .catch(async () => {
+            // First check for route-specific cache
+            const cachedResponse = await caches.match(event.request);
+            if (cachedResponse) {
+              console.log('Serving cached admin route:', url.pathname);
+              return cachedResponse;
+            }
+            
+            // Then try index.html
+            const indexResponse = await caches.match('/index.html');
+            if (indexResponse) {
+              console.log('Fallback to index.html for admin route');
+              return indexResponse;
+            }
+            
+            // As last resort, offline page
+            return caches.match(OFFLINE_URL) || 
+              new Response('App is offline', { status: 503 });
           })
       );
       return;
@@ -641,6 +688,69 @@ self.addEventListener('message', (event) => {
       if (event.source) {
         event.source.postMessage({
           type: 'CACHES_CLEARED',
+          timestamp: Date.now()
+        });
+      }
+    });
+  } else if (event.data && event.data.type === 'PRESERVE_ADMIN_CACHES') {
+    console.log('PRESERVE_ADMIN_CACHES message received, selectively clearing caches');
+    
+    // Preserve admin-related caches but clear others
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName !== 'sw-metadata')
+          .map(async (cacheName) => {
+            if (cacheName === CACHE_NAME) {
+              // For the main cache, be selective
+              const cache = await caches.open(cacheName);
+              const keys = await cache.keys();
+              
+              // Delete all non-static and non-admin-related cached requests
+              for (const request of keys) {
+                const url = new URL(request.url);
+                
+                // Check if it's a core asset that should be kept
+                const isStaticAsset = STATIC_ASSETS.some(asset => 
+                  url.pathname.endsWith(asset) || url.pathname === asset
+                );
+                
+                // Check if it's an admin-related asset that should be kept
+                const isAdminAsset = ADMIN_ROUTES.some(route => 
+                  url.pathname.includes(route)
+                );
+                
+                // Keep static assets and admin-related assets, delete others
+                if (!isStaticAsset && !isAdminAsset) {
+                  await cache.delete(request);
+                }
+              }
+              
+              return null; // Don't delete the cache itself
+            } else {
+              // Delete other caches entirely
+              return caches.delete(cacheName);
+            }
+          })
+          .filter(Boolean) // Filter out nulls
+      );
+    }).then(() => {
+      console.log('Selective cache clearing completed, admin caches preserved');
+      
+      // Notify all clients
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'ADMIN_CACHES_PRESERVED',
+            timestamp: Date.now()
+          });
+        });
+      });
+      
+      // If this message had a source, respond to it
+      if (event.source) {
+        event.source.postMessage({
+          type: 'ADMIN_CACHES_PRESERVED',
           timestamp: Date.now()
         });
       }
