@@ -170,6 +170,7 @@ const SPA_ROUTES = [
   '/study-materials',
   '/routine',
   '/admin',
+  '/super-admin',
   '/settings',
   '/profile',
 ];

@@ -140,6 +140,42 @@ export function SuperAdminDashboard() {
     refreshAdmins
   } = useAdminUsers();
 
+  // Check for super admin authentication on page load and refresh
+  useEffect(() => {
+    const verifyAuthentication = async () => {
+      try {
+        console.log('Verifying super admin authentication on page load');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.error('No session found, redirecting to login');
+          window.location.href = '/';
+          return;
+        }
+        
+        // Verify that the current user is a super admin
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (error || !userData || userData.role !== 'super-admin') {
+          console.error('User is not a super admin, redirecting to login');
+          await supabase.auth.signOut();
+          window.location.href = '/';
+          return;
+        }
+        
+        console.log('Super admin authentication verified');
+      } catch (error) {
+        console.error('Error verifying authentication:', error);
+      }
+    };
+    
+    verifyAuthentication();
+  }, []);
+
   // Check for mobile view and update when window resizes
   useEffect(() => {
     const checkMobileView = () => {

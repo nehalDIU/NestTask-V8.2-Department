@@ -36,6 +36,10 @@ const router = createBrowserRouter([
     children: []
   },
   {
+    path: '/super-admin/*',
+    element: <App />
+  },
+  {
     path: '/auth',
     element: <AuthPage 
       onLogin={async (credentials, rememberMe) => {

@@ -50,82 +50,125 @@ export function useAuth() {
     setLoading(false);
   };
 
-  const updateUserState = async (authUser: any) => {
+  const updateUserState = async (supabaseUser: any) => {
     try {
-      // Add debugging logs
-      console.log('Auth user from Supabase:', authUser);
-      console.log('User metadata:', authUser.user_metadata);
-      console.log('Role from metadata:', authUser.user_metadata?.role);
-      console.log('Auth role:', authUser.role);
-      
-      // Get user data from the public.users table to ensure we have accurate role information
-      const { data: userData, error: userError } = await supabase
+      if (!supabaseUser) {
+        setUser(null);
+        return;
+      }
+
+      // Get user profile data to get role
+      const { data: profile, error: profileError } = await supabase
         .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+        .select()
+        .eq('id', supabaseUser.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      // Special handling for super admin restoration
+      if (
+        supabaseUser.email === 'superadmin@nesttask.com' || 
+        profile?.role === 'super-admin' ||
+        supabaseUser.user_metadata?.role === 'super-admin'
+      ) {
+        console.log('[Auth] Detected super admin during session restoration');
         
-      console.log('User data from database:', userData);
-      
-      if (userError) {
-        console.error('Error fetching user data:', userError);
+        // Ensure role is set properly for super admin
+        const user: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: profile?.name || supabaseUser.user_metadata?.name || 'Super Admin',
+          role: 'super-admin',
+          phone: profile?.phone || undefined,
+          avatar: profile?.avatar || undefined,
+          sectionId: profile?.section_id || undefined,
+          sectionName: undefined,
+          studentId: profile?.student_id || undefined,
+          createdAt: profile?.created_at || null
+        };
+        
+        setUser(user);
+        return;
       }
       
-      // Determine the correct role, prioritizing the database role if available
-      let role = userData?.role || authUser.user_metadata?.role || 'user';
-      
-      // Special handling for super-admin to ensure correct format
-      if (role === 'super_admin' || role === 'super-admin') {
-        role = 'super-admin';
-      }
-      
-      console.log('Final determined role:', role);
-      
-      // For super admin, double-check in users_with_full_info view to get complete info
-      if (role === 'super-admin') {
-        console.log('Super admin detected, getting complete info');
-        const { data: fullUserData, error: fullUserError } = await supabase
-          .from('users_with_full_info')
+      // Normal user mapping for other roles
+      if (profile) {
+        // Add debugging logs
+        console.log('Auth user from Supabase:', supabaseUser);
+        console.log('User metadata:', supabaseUser.user_metadata);
+        console.log('Role from metadata:', supabaseUser.user_metadata?.role);
+        console.log('Auth role:', supabaseUser.role);
+        
+        // Get user data from the public.users table to ensure we have accurate role information
+        const { data: userData, error: userError } = await supabase
+          .from('users')
           .select('*')
-          .eq('id', authUser.id)
+          .eq('id', supabaseUser.id)
           .single();
-          
-        if (!fullUserError && fullUserData) {
-          console.log('Full user data for super admin:', fullUserData);
-          
-          setUser({
-            id: authUser.id,
-            email: authUser.email!,
-            name: fullUserData.name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || '',
-            role: 'super-admin',
-            createdAt: fullUserData.createdAt || authUser.created_at,
-            avatar: fullUserData.avatar,
-            phone: fullUserData.phone,
-            studentId: fullUserData.studentId,
-            departmentId: fullUserData.departmentId,
-            batchId: fullUserData.batchId,
-            sectionId: fullUserData.sectionId,
-            departmentName: fullUserData.departmentName,
-            batchName: fullUserData.batchName,
-            sectionName: fullUserData.sectionName
-          });
-          return;
+        
+        console.log('User data from database:', userData);
+        
+        if (userError) {
+          console.error('Error fetching user data:', userError);
         }
+        
+        // Determine the correct role, prioritizing the database role if available
+        let role = userData?.role || supabaseUser.user_metadata?.role || 'user';
+        
+        // Special handling for super-admin to ensure correct format
+        if (role === 'super_admin' || role === 'super-admin') {
+          role = 'super-admin';
+        }
+        
+        console.log('Final determined role:', role);
+        
+        // For super admin, double-check in users_with_full_info view to get complete info
+        if (role === 'super-admin') {
+          console.log('Super admin detected, getting complete info');
+          const { data: fullUserData, error: fullUserError } = await supabase
+            .from('users_with_full_info')
+            .select('*')
+            .eq('id', supabaseUser.id)
+            .single();
+          
+          if (!fullUserError && fullUserData) {
+            console.log('Full user data for super admin:', fullUserData);
+            
+            setUser({
+              id: supabaseUser.id,
+              email: supabaseUser.email!,
+              name: fullUserData.name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || '',
+              role: 'super-admin',
+              createdAt: fullUserData.createdAt || supabaseUser.created_at,
+              avatar: fullUserData.avatar,
+              phone: fullUserData.phone,
+              studentId: fullUserData.studentId,
+              departmentId: fullUserData.departmentId,
+              batchId: fullUserData.batchId,
+              sectionId: fullUserData.sectionId,
+              departmentName: fullUserData.departmentName,
+              batchName: fullUserData.batchName,
+              sectionName: fullUserData.sectionName
+            });
+            return;
+          }
+        }
+        
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: supabaseUser.user_metadata?.name || userData?.name || supabaseUser.email?.split('@')[0] || '',
+          role: role as 'user' | 'admin' | 'super-admin' | 'section-admin',
+          createdAt: supabaseUser.created_at,
+          avatar: userData?.avatar,
+          phone: userData?.phone || supabaseUser.user_metadata?.phone,
+          studentId: userData?.student_id || supabaseUser.user_metadata?.studentId,
+          departmentId: userData?.department_id || supabaseUser.user_metadata?.departmentId,
+          batchId: userData?.batch_id || supabaseUser.user_metadata?.batchId,
+          sectionId: userData?.section_id || supabaseUser.user_metadata?.sectionId
+        });
       }
-      
-      setUser({
-        id: authUser.id,
-        email: authUser.email!,
-        name: authUser.user_metadata?.name || userData?.name || authUser.email?.split('@')[0] || '',
-        role: role as 'user' | 'admin' | 'super-admin' | 'section-admin',
-        createdAt: authUser.created_at,
-        avatar: userData?.avatar,
-        phone: userData?.phone || authUser.user_metadata?.phone,
-        studentId: userData?.student_id || authUser.user_metadata?.studentId,
-        departmentId: userData?.department_id || authUser.user_metadata?.departmentId,
-        batchId: userData?.batch_id || authUser.user_metadata?.batchId,
-        sectionId: userData?.section_id || authUser.user_metadata?.sectionId
-      });
     } catch (err) {
       console.error('Error updating user state:', err);
       setError('Failed to update user information');

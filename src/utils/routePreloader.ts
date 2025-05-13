@@ -12,6 +12,7 @@ const importRoutinePage = () => import('../pages/RoutinePage').then(module => ({
 // Map of route keys to import functions
 const routeImports = {
   'admin': importAdminDashboard,
+  'super-admin': () => import('../components/admin/super/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })),
   'upcoming': importUpcomingPage,
   'search': importSearchPage,
   'notifications': importNotificationsPage,
@@ -24,6 +25,7 @@ const routeImports = {
 export const APP_ROUTES = [
   'home',
   'admin',
+  'super-admin',
   'upcoming',
   'search',
   'notifications',
