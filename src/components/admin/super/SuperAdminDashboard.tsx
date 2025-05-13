@@ -18,7 +18,6 @@ import { Department, Batch, Section } from '../../../types/auth';
 import { testUserFetch } from '../../../services/test.service';
 import { supabase } from '../../../lib/supabase';
 import { getDepartments, getBatchesByDepartment, getSectionsByBatch } from '../../../services/department.service';
-import { LoadingScreen } from '../../../components/LoadingScreen';
 
 // SideNavLink Component
 interface SideNavLinkProps {
@@ -116,8 +115,6 @@ export function SuperAdminDashboard() {
   });
   const [testLoading, setTestLoading] = useState(false);
   const [userRoleDebug, setUserRoleDebug] = useState<string | null>(null);
-  const [authVerified, setAuthVerified] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
   
   // State for departments, batches, and sections
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -125,7 +122,7 @@ export function SuperAdminDashboard() {
   const [sections, setSections] = useState<Section[]>([]);
 
   const { isDark, toggle: toggleTheme } = useTheme();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
 
   const { 
     admins, 
@@ -142,106 +139,6 @@ export function SuperAdminDashboard() {
     getSections,
     refreshAdmins
   } = useAdminUsers();
-
-  // Check for super admin authentication on page load and refresh
-  useEffect(() => {
-    const verifyAuthentication = async () => {
-      try {
-        console.log('Verifying super admin authentication on page load');
-        
-        // First check if we already have user data from context
-        if (user && user.role === 'super-admin') {
-          console.log('User already authenticated as super admin via context');
-          setAuthVerified(true);
-          return;
-        }
-        
-        // If not, check the session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          console.error('No session found, redirecting to login');
-          setVerificationError('No active session found. Please login again.');
-          window.location.href = '/';
-          return;
-        }
-        
-        console.log('Session found during verification:', session.user.id);
-        
-        // Verify that the current user is a super admin
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching user data:', error);
-          setVerificationError('Error verifying user role. Please try again.');
-          return;
-        }
-        
-        console.log('User role from database:', userData?.role);
-          
-        if (!userData || userData.role !== 'super-admin') {
-          console.error('User is not a super admin, redirecting to login');
-          setVerificationError('Access denied. Super admin privileges required.');
-          await supabase.auth.signOut();
-          window.location.href = '/';
-          return;
-        }
-        
-        console.log('Super admin authentication verified');
-        setAuthVerified(true);
-      } catch (error) {
-        console.error('Error verifying authentication:', error);
-        setVerificationError('Authentication verification failed. Please try again.');
-      }
-    };
-    
-    verifyAuthentication();
-  }, [user]);
-
-  // Periodically check session to ensure it remains valid (helps with refresh issues)
-  useEffect(() => {
-    const sessionCheckInterval = setInterval(async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            console.warn('Session lost, reloading page');
-            window.location.reload();
-          }
-        } catch (error) {
-          console.error('Session check error:', error);
-        }
-      }
-    }, 30000); // Check every 30 seconds when page is visible
-    
-    return () => clearInterval(sessionCheckInterval);
-  }, []);
-
-  // Add visibility change handler to check session when tab becomes active
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            console.warn('Session lost on visibility change, reloading page');
-            window.location.reload();
-          } else {
-            console.log('Session valid on visibility change');
-          }
-        } catch (error) {
-          console.error('Visibility change session check error:', error);
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
 
   // Check for mobile view and update when window resizes
   useEffect(() => {
@@ -626,17 +523,6 @@ export function SuperAdminDashboard() {
       icon: Key
     }
   ];
-
-  // Render loading screen if authentication is still being verified
-  if (!authVerified) {
-    return (
-      <LoadingScreen 
-        minimumLoadTime={500} 
-        showProgress={true} 
-        message={verificationError || 'Verifying super admin access...'}
-      />
-    );
-  }
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">

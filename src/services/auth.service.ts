@@ -403,32 +403,44 @@ function setupTokenRefresh(refreshToken: string) {
   window.addEventListener('focus', handleFocusRefresh);
 }
 
-// Add proper role caching to ensure persistence on refresh
-export const mapDbUserToUser = (dbUser: Database['public']['Tables']['users']['Row'], isGuest: boolean = false): User => {
-  // For super admin users, ensure we store the role for refresh detection
-  if (dbUser.role === 'super-admin') {
-    console.log('Mapping super-admin user, caching role');
-    try {
-      localStorage.setItem('user_role', 'super-admin');
-    } catch (error) {
-      console.error('Failed to cache super-admin role:', error);
-    }
-  }
+// Helper function to map database user to User type
+export function mapDbUserToUser(dbUser: SupabaseUser): User {
+  console.log('Mapping DB user to User:', dbUser);
   
-  // Continue with existing mapping code
+  // Make sure we correctly handle role values, especially 'super-admin'
+  let userRole: 'user' | 'admin' | 'super-admin' | 'section-admin' = 'user';
+  
+  // Special check for superadmin@nesttask.com email
+  if (dbUser.email === 'superadmin@nesttask.com') {
+    userRole = 'super-admin';
+    console.log('Found superadmin@nesttask.com email, forcing super-admin role');
+  }
+  // Regular role checking
+  else if (dbUser.role === 'admin') {
+    userRole = 'admin';
+  } else if (dbUser.role === 'super-admin' || dbUser.role === 'super_admin') {
+    userRole = 'super-admin';
+    console.log('Found super-admin user, setting role properly');
+  } else if (dbUser.role === 'section-admin' || dbUser.role === 'section_admin') {
+    userRole = 'section-admin';
+    console.log('Found section-admin user, setting role properly');
+  }
+
   return {
     id: dbUser.id,
-    email: dbUser.email || '',
-    name: dbUser.name || 'Anonymous',
-    role: (dbUser.role as 'user' | 'admin' | 'super-admin' | 'section_admin') || 'user',
-    phone: dbUser.phone || undefined,
-    avatar: dbUser.avatar || undefined,
-    sectionId: dbUser.section_id || undefined,
-    sectionName: undefined, // Will be filled in by another query if needed
-    studentId: dbUser.student_id || undefined,
-    createdAt: dbUser.created_at || null
+    email: dbUser.email,
+    name: dbUser.name || (dbUser.username as string) || dbUser.email.split('@')[0],
+    role: userRole,
+    avatar: dbUser.avatar,
+    phone: dbUser.phone || '',  // Ensure phone always has a default value
+    createdAt: dbUser.created_at || new Date().toISOString(),
+    lastActive: dbUser.last_active,
+    studentId: dbUser.student_id,
+    departmentId: dbUser.department_id,
+    batchId: dbUser.batch_id,
+    sectionId: dbUser.section_id
   };
-};
+}
 
 export async function resetPassword(email: string): Promise<void> {
   try {

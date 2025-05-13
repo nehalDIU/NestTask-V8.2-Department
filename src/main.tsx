@@ -1,7 +1,6 @@
-import { StrictMode, Suspense, lazy, useState, useEffect } from 'react';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-// Use custom analytics loader instead of the component
-import { safelyLoadAnalytics, setupAnalyticsErrorHandler } from '@/utils/analyticsLoader';
+import { Analytics } from '@vercel/analytics/react';
 // Import CSS (Vite handles this correctly)
 import './index.css';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -9,13 +8,11 @@ import { initPWA } from '@/utils/pwa';
 import { prefetchResources, prefetchAsset, prefetchApiData } from '@/utils/prefetch';
 // Use normal import without extension, the path alias will handle it correctly
 import { STORES } from '@/utils/offlineStorage';
-import { sessionRecovery } from '@/utils/sessionRecovery';
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
-import App from './App';
 
 // Performance optimizations initialization
 const startTime = performance.now();
@@ -23,25 +20,13 @@ const startTime = performance.now();
 // Mark the first paint timing
 performance.mark('app-init-start');
 
-// Page import functions for prefetching
-const importAdminDashboard = () => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard }));
-const importSuperAdminDashboard = () => import('./components/admin/super/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard }));
-const importUpcomingPage = () => import('./pages/UpcomingPage').then(module => ({ default: module.UpcomingPage }));
-const importSearchPage = () => import('./pages/SearchPage').then(module => ({ default: module.SearchPage }));
-const importNotificationsPage = () => import('./pages/NotificationsPage').then(module => ({ default: module.NotificationsPage }));
-const importCoursePage = () => import('./pages/CoursePage').then(module => ({ default: module.CoursePage }));
-const importStudyMaterialsPage = () => import('./pages/StudyMaterialsPage').then(module => ({ default: module.StudyMaterialsPage }));
-const importRoutinePage = () => import('./pages/RoutinePage').then(module => ({ default: module.RoutinePage }));
-
-// Lazy-loaded components with instant loading config
-const AdminDashboard = lazy(importAdminDashboard);
-const SuperAdminRouteComponent = lazy(() => import('./components/admin/super/SuperAdminRoute').then(module => ({ default: module.SuperAdminRoute })));
-const UpcomingPage = lazy(importUpcomingPage);
-const SearchPage = lazy(importSearchPage);
-const NotificationsPage = lazy(importNotificationsPage);
-const CoursePage = lazy(importCoursePage);
-const StudyMaterialsPage = lazy(importStudyMaterialsPage);
-const RoutinePage = lazy(importRoutinePage);
+// Lazy load the main App component
+const App = lazy(() => import('./App').then(module => {
+  // Track and log module loading time
+  const loadTime = performance.now() - startTime;
+  console.debug(`App component loaded in ${loadTime.toFixed(2)}ms`);
+  return module;
+}));
 
 // Define app routes
 const router = createBrowserRouter([
@@ -52,19 +37,9 @@ const router = createBrowserRouter([
   },
   {
     path: '/super-admin',
-    element: (
-      <Suspense fallback={<LoadingScreen message="Loading super admin dashboard..." />}>
-        <SuperAdminRouteComponent />
-      </Suspense>
-    )
-  },
-  {
-    path: '/super-admin/*',
-    element: (
-      <Suspense fallback={<LoadingScreen message="Loading super admin dashboard..." />}>
-        <SuperAdminRouteComponent />
-      </Suspense>
-    )
+    element: <Suspense fallback={<LoadingScreen minimumLoadTime={600} />}>
+      <lazy(() => import('./components/admin/super/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })))/>
+    </Suspense>
   },
   {
     path: '/auth',
@@ -124,13 +99,6 @@ const pwaPromise = Promise.resolve().then(() => {
     initPWA().catch(err => console.error('PWA initialization error:', err));
   }, 1000);
 });
-
-// Initialize analytics with safety measures in production only
-if (import.meta.env.PROD) {
-  setupAnalyticsErrorHandler();
-  // Load analytics after a small delay to prioritize app rendering
-  setTimeout(safelyLoadAnalytics, 2000);
-}
 
 // Enhanced prefetch for resources with priority marking
 const prefetchCriticalResources = () => {
@@ -306,7 +274,8 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      {/* Analytics now loaded programmatically via safelyLoadAnalytics */}
+      {/* Only include Analytics in production environment to avoid development errors */}
+      {import.meta.env.PROD && <Analytics debug={false} />}
     </Suspense>
   </StrictMode>
 );
@@ -431,26 +400,3 @@ supabase.auth.onAuthStateChange((event, session) => {
     clearCachesForTroubleshooting();
   }
 });
-
-// Simple error boundary component to catch Analytics errors
-function ErrorBoundary({ children, fallback }: { children: React.ReactNode, fallback: React.ReactNode }) {
-  const [hasError, setHasError] = useState(false);
-  
-  useEffect(() => {
-    // Listen for errors related to Vercel Analytics
-    const handleError = (event: ErrorEvent) => {
-      if (event.message.includes('vercel') || 
-          event.message.includes('insights') || 
-          event.filename?.includes('vercel')) {
-        console.log('Caught Vercel Analytics error, suppressing');
-        setHasError(true);
-        event.preventDefault();
-      }
-    };
-    
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-  
-  return hasError ? fallback : children;
-}

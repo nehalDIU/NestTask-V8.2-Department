@@ -10,3 +10,8 @@
 /service-worker.js
   Service-Worker-Allowed: /
   Cache-Control: no-cache
+
+# Allow Vercel Analytics endpoints to be accessed without CSP restrictions
+/_vercel/insights/*
+  Access-Control-Allow-Origin: *
+  Content-Security-Policy: default-src 'self' https://va.vercel-scripts.com https://*.vercel-insights.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://*.vercel-insights.com; connect-src 'self' https://va.vercel-scripts.com https://*.vercel-insights.com;

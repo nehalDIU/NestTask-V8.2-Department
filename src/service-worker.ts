@@ -165,7 +165,7 @@ registerRoute(
   })
 );
 
-// Network Only for all API routes - never cache API responses
+// Network Only for all API routes and analytics - never cache these
 registerRoute(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ({ url }: { url: any }) => {
@@ -177,10 +177,12 @@ registerRoute(
       return false;
     }
     
-    // Match all API endpoints - never cache them
+    // Match all API endpoints and analytics - never cache them
     return url.pathname.includes('/api/') || 
            url.pathname.includes('/rest/') ||
-           url.pathname.includes('/supabase/');
+           url.pathname.includes('/supabase/') ||
+           url.pathname.includes('/_vercel/insights') ||
+           url.pathname.includes('/vercel/insights');
   },
   new NetworkOnly()
 );

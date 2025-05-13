@@ -152,6 +152,11 @@ function shouldCacheAtRuntime(url) {
       return false;
     }
     
+    // Don't cache Vercel Analytics requests
+    if (url.includes('/_vercel/insights') || url.includes('/vercel/insights')) {
+      return false;
+    }
+    
     // Check if the URL matches any of our patterns
     return RUNTIME_CACHE_PATTERNS.some(pattern => pattern.test(url));
   } catch (error) {
@@ -241,27 +246,49 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Skip Supabase API requests (let them go to network)
-    if (url.hostname.includes('supabase.co')) {
+    if (url.hostname.includes('supabase.co') || url.hostname.includes('vercel.app/_vercel')) {
       return;
     }
 
     // Special handling for SPA routes - always serve index.html
     if (event.request.mode === 'navigate') {
+      const pathname = url.pathname;
       const isSpaRoute = SPA_ROUTES.some(route => 
-        url.pathname === route || url.pathname.startsWith(`${route}/`)
+        pathname === route || 
+        pathname.startsWith(`${route}/`) ||
+        pathname === `${route}.html`
       );
       
-      if (isSpaRoute) {
+      if (isSpaRoute || pathname === '/' || pathname === '/index.html') {
         event.respondWith(
-          caches.match('/index.html')
+          fetch('/index.html', { cache: 'no-store' })
             .then(response => {
-              if (response) {
+              if (response && response.ok) {
+                // Cache the fresh index.html
+                const clonedResponse = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                  cache.put('/index.html', clonedResponse);
+                });
                 return response;
               }
-              return fetch('/index.html');
+              
+              // If network fetch fails, try the cache
+              return caches.match('/index.html')
+                .then(cachedResponse => {
+                  if (cachedResponse) {
+                    return cachedResponse;
+                  }
+                  return caches.match(OFFLINE_URL);
+                });
             })
             .catch(() => {
-              return caches.match(OFFLINE_URL);
+              return caches.match('/index.html')
+                .then(cachedResponse => {
+                  if (cachedResponse) {
+                    return cachedResponse;
+                  }
+                  return caches.match(OFFLINE_URL);
+                });
             })
         );
         return;
@@ -357,45 +384,6 @@ self.addEventListener('fetch', (event) => {
           });
         })
       );
-      return;
-    }
-
-    // Skip analytics script requests completely if they're blocked
-    if (url.pathname.includes('/_vercel/insights') || url.pathname.includes('/analytics')) {
-      // Check if we have a record of this request being blocked
-      const cacheKey = `blocked:${url.pathname}`;
-      
-      // Use a special cache for tracking blocked URLs
-      caches.open('blocked-requests').then(cache => {
-        cache.match(cacheKey).then(response => {
-          if (response) {
-            // This URL was previously blocked, so respond with an empty response
-            event.respondWith(new Response('', {
-              status: 200,
-              headers: {'Content-Type': 'application/javascript'}
-            }));
-            return;
-          }
-          
-          // Otherwise, let the request proceed but watch for failure
-          const fetchPromise = fetch(event.request).catch(error => {
-            // If the request fails (likely blocked by ad blocker), cache that fact
-            cache.put(cacheKey, new Response('blocked'));
-            
-            // Return empty response
-            return new Response('', {
-              status: 200,
-              headers: {'Content-Type': 'application/javascript'}
-            });
-          });
-          
-          event.respondWith(fetchPromise);
-        });
-      }).catch(error => {
-        // If anything goes wrong with our special handling, just let the request proceed
-        console.error('Error handling analytics request:', error);
-      });
-      
       return;
     }
   } catch (error) {
