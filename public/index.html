@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3B82F6">
+  <meta name="description" content="NestTask - Task Management for Students">
+  
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  
+  <title>NestTask</title>
+  
+  <!-- Critical CSS for faster initial load -->
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      color: #111827;
+    }
+    
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #f9fafb;
+      z-index: 9999;
+    }
+    
+    .spinner {
+      width: 32px;
+      height: 32px;
+      position: relative;
+    }
+    
+    .spinner::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background-color: rgba(59, 130, 246, 0.15);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .spinner::after {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border-radius: 50%;
+      background-color: #3b82f6;
+    }
+    
+    .spinner-text {
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.7; }
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #111827;
+        color: #f9fafb;
+      }
+      
+      .loading {
+        background-color: #111827;
+      }
+      
+      .spinner::before {
+        background-color: rgba(59, 130, 246, 0.2);
+      }
+      
+      .spinner-text {
+        color: #9ca3af;
+      }
+    }
+  </style>
+  
+  <script type="text/javascript">
+    // Detect and handle direct navigation to super-admin route
+    (function() {
+      if (window.location.pathname.startsWith('/super-admin')) {
+        // Store the fact we're on super-admin route
+        sessionStorage.setItem('directSuperAdminAccess', 'true');
+        
+        // Force a timestamp in the URL to prevent caching issues
+        if (!window.location.search.includes('_ts=')) {
+          const separator = window.location.search ? '&' : '?';
+          const newUrl = window.location.href + separator + '_ts=' + Date.now();
+          window.history.replaceState(null, '', newUrl);
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <!-- Loading screen -->
+  <div class="loading" id="initial-loading">
+    <div class="spinner"></div>
+    <div class="spinner-text">NestTask</div>
+  </div>
+  
+  <!-- React mount point -->
+  <div id="root"></div>
+  
+  <!-- Super Admin Access Script for special routes -->
+  <script type="text/javascript">
+    // Special handling for direct access to super-admin routes
+    if (window.location.pathname.startsWith('/super-admin')) {
+      // Allow the auth state to be properly restored by 
+      // making sure the application has time to check and verify roles
+      const verifyAuthStatus = async () => {
+        try {
+          // Check for cached super admin role
+          const cachedRole = localStorage.getItem('user_role');
+          if (cachedRole === 'super-admin') {
+            console.log('Found cached super-admin role');
+          } else {
+            console.log('No cached super-admin role, will rely on session');
+          }
+        } catch (error) {
+          console.error('Error in super-admin pre-check:', error);
+        }
+      };
+      
+      // Run the auth verification as soon as possible
+      verifyAuthStatus();
+    }
+  </script>
+</body>
+</html> 

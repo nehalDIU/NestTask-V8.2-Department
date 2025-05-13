@@ -23,24 +23,48 @@ const startTime = performance.now();
 // Mark the first paint timing
 performance.mark('app-init-start');
 
-// Lazy load the main App component
-const AppComponent = lazy(() => import('./App').then(module => {
-  // Track and log module loading time
-  const loadTime = performance.now() - startTime;
-  console.debug(`App component loaded in ${loadTime.toFixed(2)}ms`);
-  return module;
-}));
+// Page import functions for prefetching
+const importAdminDashboard = () => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard }));
+const importSuperAdminDashboard = () => import('./components/admin/super/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard }));
+const importUpcomingPage = () => import('./pages/UpcomingPage').then(module => ({ default: module.UpcomingPage }));
+const importSearchPage = () => import('./pages/SearchPage').then(module => ({ default: module.SearchPage }));
+const importNotificationsPage = () => import('./pages/NotificationsPage').then(module => ({ default: module.NotificationsPage }));
+const importCoursePage = () => import('./pages/CoursePage').then(module => ({ default: module.CoursePage }));
+const importStudyMaterialsPage = () => import('./pages/StudyMaterialsPage').then(module => ({ default: module.StudyMaterialsPage }));
+const importRoutinePage = () => import('./pages/RoutinePage').then(module => ({ default: module.RoutinePage }));
+
+// Lazy-loaded components with instant loading config
+const AdminDashboard = lazy(importAdminDashboard);
+const SuperAdminRouteComponent = lazy(() => import('./components/admin/super/SuperAdminRoute').then(module => ({ default: module.SuperAdminRoute })));
+const UpcomingPage = lazy(importUpcomingPage);
+const SearchPage = lazy(importSearchPage);
+const NotificationsPage = lazy(importNotificationsPage);
+const CoursePage = lazy(importCoursePage);
+const StudyMaterialsPage = lazy(importStudyMaterialsPage);
+const RoutinePage = lazy(importRoutinePage);
 
 // Define app routes
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppComponent />,
+    element: <App />,
     children: []
   },
   {
+    path: '/super-admin',
+    element: (
+      <Suspense fallback={<LoadingScreen message="Loading super admin dashboard..." />}>
+        <SuperAdminRouteComponent />
+      </Suspense>
+    )
+  },
+  {
     path: '/super-admin/*',
-    element: <AppComponent />
+    element: (
+      <Suspense fallback={<LoadingScreen message="Loading super admin dashboard..." />}>
+        <SuperAdminRouteComponent />
+      </Suspense>
+    )
   },
   {
     path: '/auth',

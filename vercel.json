@@ -35,11 +35,13 @@
     },
     {
       "src": "/super-admin",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": { "cache-control": "public, max-age=0, must-revalidate" }
     },
     {
       "src": "/super-admin/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": { "cache-control": "public, max-age=0, must-revalidate" }
     },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

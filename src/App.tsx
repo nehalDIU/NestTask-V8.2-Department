@@ -29,6 +29,7 @@ import type { User } from './types/user';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { supabase, testConnection } from './lib/supabase';
 import { preloadPredictedRoutes } from './utils/routePreloader';
+import { Navigate } from 'react-router-dom';
 
 // Page import functions for prefetching
 const importAdminDashboard = () => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard }));
@@ -61,6 +62,15 @@ export default function App() {
     if (user) {
       console.log('Current user role:', user.role);
       console.log('Complete user object:', user);
+      
+      // Store role in localStorage for persistence across refreshes
+      if (user.role) {
+        try {
+          localStorage.setItem('user_role', user.role);
+        } catch (e) {
+          console.error('Failed to store user role in localStorage:', e);
+        }
+      }
     }
   }, [user]);
   
@@ -567,21 +577,9 @@ export default function App() {
 
   // Check for super-admin role first
   if (user?.role === 'super-admin') {
-    console.log('[App] Rendering SuperAdminDashboard for super-admin user:', user.id);
-    // Ensure we're on the super-admin path for proper handling on refresh
-    if (!window.location.pathname.startsWith('/super-admin')) {
-      const urlParams = new URLSearchParams(window.location.search);
-      window.history.replaceState(
-        null,
-        'Super Admin Dashboard',
-        `/super-admin?${urlParams.toString()}`
-      );
-    }
-    return (
-      <Suspense fallback={<LoadingScreen minimumLoadTime={300} />}>
-        <SuperAdminDashboard />
-      </Suspense>
-    );
+    console.log('[App] User is super-admin, redirecting to super admin route');
+    // Redirect to dedicated super-admin route for better handling on refresh
+    return <Navigate to="/super-admin" replace />;
   }
 
   // Then check for regular admin role
@@ -623,6 +621,27 @@ export default function App() {
       </Suspense>
     );
   }
+
+  // Handle special redirect from super-admin directory HTML file
+  useEffect(() => {
+    // Check if we were redirected from the super-admin directory special page
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectTo = urlParams.get('redirect_to');
+    
+    if (redirectTo && redirectTo.startsWith('/super-admin') && user?.role === 'super-admin') {
+      console.log('[App] Processing redirect to super-admin from special handler');
+      
+      // Remove the redirect_to parameter to avoid loops
+      urlParams.delete('redirect_to');
+      const newSearch = urlParams.toString();
+      const newPath = redirectTo + (newSearch ? `?${newSearch}` : '');
+      
+      // Use a short delay to ensure session is fully established
+      setTimeout(() => {
+        window.location.href = newPath;
+      }, 200);
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
