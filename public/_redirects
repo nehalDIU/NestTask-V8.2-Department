@@ -1,5 +1,9 @@
-# Handle blocked analytics requests by redirecting to noop.js
+# Handle missing Vercel Analytics scripts by redirecting to our fallback noop.js
+/_vercel/insights/script.js /noop.js 200
 /_vercel/insights/* /noop.js 200
 
 # Keep the original pathname in the URL so that the client can still use it
-/* /:splat 200 
+/* /:splat 200
+
+# SPA fallback
+/* /index.html 200 

@@ -27,7 +27,9 @@ export default defineConfig({
         'robots.txt', 
         'icons/*.png',
         'manifest.json',
-        'offline.html'
+        'offline.html',
+        'noop.js',
+        'vercel-analytics-mock.js'
       ],
       manifest: {
         name: 'NestTask',
@@ -56,6 +58,8 @@ export default defineConfig({
       workbox: {
         clientsClaim: true,
         skipWaiting: true,
+        // Disable caching for analytics endpoints
+        navigateFallbackDenylist: [/\/_vercel\/insights\/.*/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -85,20 +89,17 @@ export default defineConfig({
               }
             }
           },
-          // Add Vercel analytics endpoint to cache, with network-first strategy
+          // Use network-only for Vercel analytics to avoid caching issues
           {
             urlPattern: /^https:\/\/vitals\.vercel-insights\.com\/.*/i,
-            handler: 'NetworkFirst',
+            handler: 'NetworkOnly',
             options: {
-              cacheName: 'vercel-analytics-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 // 1 day
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              },
-              networkTimeoutSeconds: 3 // Timeout after 3 seconds
+              backgroundSync: {
+                name: 'analytics-queue',
+                options: {
+                  maxRetentionTime: 24 * 60 // Retry for up to 24 hours (in minutes)
+                }
+              }
             }
           }
         ]
@@ -238,13 +239,21 @@ export default defineConfig({
       "Access-Control-Allow-Origin": "*",
       "Cross-Origin-Embedder-Policy": "credentialless",
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Resource-Policy": "cross-origin"
+      "Cross-Origin-Resource-Policy": "cross-origin",
+      // Add no-cache headers for analytics endpoints
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
     }
   },
   // Improve preview server performance
   preview: {
     port: 4173,
     strictPort: true,
+    headers: {
+      // Prevent caching in preview mode
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      "Pragma": "no-cache",
+      "Expires": "0"
+    }
   },
   // Speed up first dev startup by caching
   cacheDir: 'node_modules/.vite'
