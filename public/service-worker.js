@@ -194,6 +194,9 @@ const SPA_ROUTES = [
   '/admin',
   '/settings',
   '/profile',
+  '/super-admin',
+  '/super-admin/dashboard',
+  '/super-admin/settings'
 ];
 
 // Fetch event - stale-while-revalidate strategy for assets, network-first for API
@@ -584,7 +587,9 @@ self.addEventListener('message', (event) => {
         '/home',
         '/profile',
         '/settings',
-        '/admin'
+        '/admin',
+        '/super-admin',
+        '/super-admin/dashboard'
       ];
       
       // Delete these cached entries so they'll be fetched fresh

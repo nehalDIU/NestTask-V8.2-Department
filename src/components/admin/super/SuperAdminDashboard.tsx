@@ -140,6 +140,46 @@ export function SuperAdminDashboard() {
     refreshAdmins
   } = useAdminUsers();
 
+  // Add page recovery mechanism
+  useEffect(() => {
+    // Check if we're recovering from a refresh
+    const isRecovering = sessionStorage.getItem('recovering_super_admin');
+    
+    if (isRecovering) {
+      console.log('Recovering from page refresh in Super Admin Dashboard');
+      sessionStorage.removeItem('recovering_super_admin');
+      
+      // Force a data refresh
+      refreshAdmins();
+      
+      // If the page still looks blank after a short delay, force another reload
+      const blankPageTimeout = setTimeout(() => {
+        const mainContent = document.querySelector('main');
+        // If main content appears empty or has very little content, reload
+        if (mainContent && mainContent.childElementCount <= 2) {
+          console.log('Content appears to be missing, forcing reload');
+          sessionStorage.setItem('recovering_super_admin', 'true');
+          window.location.reload();
+        }
+      }, 1500);
+      
+      return () => clearTimeout(blankPageTimeout);
+    } else {
+      // Mark that we've loaded the dashboard for potential recovery
+      sessionStorage.setItem('super_admin_loaded', 'true');
+    }
+    
+    // Handle beforeunload to detect refreshes
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem('recovering_super_admin', 'true');
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [refreshAdmins]);
+
   // Check for mobile view and update when window resizes
   useEffect(() => {
     const checkMobileView = () => {
