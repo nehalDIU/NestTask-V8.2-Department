@@ -28,6 +28,65 @@ const App = lazy(() => import('./App').then(module => {
   return module;
 }));
 
+// Define app routes
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <App />,
+    children: []
+  },
+  {
+    path: '/auth',
+    element: <AuthPage 
+      onLogin={async (credentials, rememberMe) => {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
+          if (error) throw error;
+          console.log('User logged in:', data);
+        } catch (error) {
+          console.error('Login error:', error);
+          throw error;
+        }
+      }}
+      onSignup={async (credentials) => {
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: credentials.email,
+            password: credentials.password,
+            options: {
+              data: {
+                name: credentials.name
+              }
+            }
+          });
+          if (error) throw error;
+          console.log('User signed up:', data);
+        } catch (error) {
+          console.error('Signup error:', error);
+          throw error;
+        }
+      }}
+      onForgotPassword={async (email) => {
+        try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email);
+          if (error) throw error;
+          console.log('Password reset email sent');
+        } catch (error) {
+          console.error('Forgot password error:', error);
+          throw error;
+        }
+      }}
+    />
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />
+  }
+]);
+
 // Initialize PWA functionality in parallel but don't block initial render
 const pwaPromise = Promise.resolve().then(() => {
   setTimeout(() => {
@@ -204,11 +263,11 @@ const root = createRoot(rootElement);
 // Track initial render time
 performance.mark('react-mount-start');
 
-// Render the app with minimal suspense delay and initialize loading state in DOM
+// Render the app with RouterProvider and minimal suspense delay
 root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
-      <App />
+      <RouterProvider router={router} />
       <Analytics />
     </Suspense>
   </StrictMode>
@@ -325,23 +384,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Define app routes
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <App />,
-    children: []
-  },
-  {
-    path: '/auth',
-    element: <AuthPage />
-  },
-  {
-    path: '/reset-password',
-    element: <ResetPasswordPage />
-  }
-]);
-
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
     console.log('User signed in');
@@ -351,9 +393,3 @@ supabase.auth.onAuthStateChange((event, session) => {
     clearCachesForTroubleshooting();
   }
 });
-
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <RouterProvider router={router} />
-  </React.StrictMode>
-);
