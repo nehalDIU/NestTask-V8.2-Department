@@ -12,6 +12,18 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
 
+// Ensure environment variables are properly loaded in production
+if (import.meta.env.PROD) {
+  console.log('[Debug] Running in production mode - checking environment variables');
+  // Check if we need to add environment variables to window for runtime access
+  if (!import.meta.env.VITE_SUPABASE_URL && !((window as any).ENV_SUPABASE_URL)) {
+    console.error('[Error] Missing Supabase URL in production environment');
+  }
+  if (!import.meta.env.VITE_SUPABASE_ANON_KEY && !((window as any).ENV_SUPABASE_ANON_KEY)) {
+    console.error('[Error] Missing Supabase Anon Key in production environment');
+  }
+}
+
 // Performance optimizations initialization
 const startTime = performance.now();
 

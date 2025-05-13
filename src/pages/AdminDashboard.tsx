@@ -65,6 +65,14 @@ export function AdminDashboard({
   const { user } = useAuth();
   const { refreshTasks, loading: tasksLoading } = useTasks(user?.id);
   
+  // Force task form visible when task management tab is activated
+  useEffect(() => {
+    if (activeTab === 'task-management') {
+      console.log('[Debug] Setting showTaskForm to true for task-management tab');
+      setShowTaskForm(true);
+    }
+  }, [activeTab]);
+  
   // Filter tasks for section admin
   const filteredTasks = useMemo(() => {
     if (!isSectionAdmin || !sectionId) {

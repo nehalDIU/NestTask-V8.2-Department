@@ -45,12 +45,28 @@ export function TaskManager({
   isLoading = false
 }: TaskManagerProps) {
   // Main UI state
-  const [showTaskForm, setShowTaskForm] = useState(initialShowTaskForm);
+  const [showTaskForm, setShowTaskForm] = useState(true); // Always show task form
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  
+  // Force showTaskForm state to match prop when it changes
+  useEffect(() => {
+    console.log('[Debug] TaskManager: initialShowTaskForm prop changed to', initialShowTaskForm);
+    setShowTaskForm(true); // Always keep form visible
+  }, [initialShowTaskForm]);
+
+  // Debug logging on mount
+  useEffect(() => {
+    console.log('[Debug] TaskManager mounted with props:', {
+      taskCount: tasks.length,
+      showTaskForm: initialShowTaskForm,
+      sectionId,
+      isSectionAdmin
+    });
+  }, []);
   
   // Sorting
   const [sortBy, setSortBy] = useState<'createdAt' | 'dueDate' | 'name' | 'category' | 'priority'>('dueDate');
@@ -82,11 +98,6 @@ export function TaskManager({
   useEffect(() => {
     setLocalTasks(tasks);
   }, [tasks]);
-  
-  // Update show task form when prop changes
-  useEffect(() => {
-    setShowTaskForm(initialShowTaskForm);
-  }, [initialShowTaskForm]);
   
   // Debounced search
   useEffect(() => {

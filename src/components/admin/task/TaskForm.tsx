@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Tag, 
   Calendar, 
@@ -42,6 +42,24 @@ export function TaskForm({ onSubmit, sectionId, isSectionAdmin = false }: TaskFo
   const [success, setSuccess] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   
+  // Debug logging on mount
+  useEffect(() => {
+    console.log('[Debug] TaskForm mounted with props:', {
+      isSectionAdmin,
+      sectionId,
+    });
+    
+    // Check for form elements in DOM
+    setTimeout(() => {
+      const nameInput = document.getElementById('name');
+      const dueDateInput = document.getElementById('dueDate');
+      console.log('[Debug] TaskForm DOM elements present:', {
+        nameInput: !!nameInput,
+        dueDateInput: !!dueDateInput
+      });
+    }, 500);
+  }, [isSectionAdmin, sectionId]);
+  
   // Validation function
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof NewTask, string>> = {};
@@ -71,6 +89,7 @@ export function TaskForm({ onSubmit, sectionId, isSectionAdmin = false }: TaskFo
       isValid = false;
     }
     
+    console.log('[Debug] Form validation result:', { isValid, errors: newErrors });
     setErrors(newErrors);
     return isValid;
   };

@@ -1,8 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Ensure environment variables are available or provide fallbacks
+// This helps when Vercel deploys and environment variables might be configured differently
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+  (typeof window !== 'undefined' && (window as any).ENV_SUPABASE_URL);
+
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+  (typeof window !== 'undefined' && (window as any).ENV_SUPABASE_ANON_KEY);
+
+// Log for debugging purpose during deployment
+console.log('[Debug] Supabase initialization:', { 
+  hasUrl: !!supabaseUrl, 
+  hasKey: !!supabaseAnonKey,
+  environment: import.meta.env.MODE 
+});
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please click "Connect to Supabase" to set up your project.');
