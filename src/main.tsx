@@ -1,6 +1,5 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Analytics } from '@vercel/analytics/react';
 // Import CSS (Vite handles this correctly)
 import './index.css';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -13,6 +12,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
+import { AnalyticsWrapper } from './components/AnalyticsWrapper';
 
 // Performance optimizations initialization
 const startTime = performance.now();
@@ -269,7 +269,7 @@ root.render(
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
       {/* Only include Analytics in production environment */}
-      {import.meta.env.PROD && <Analytics />}
+      {import.meta.env.PROD && <AnalyticsWrapper />}
     </Suspense>
   </StrictMode>
 );
