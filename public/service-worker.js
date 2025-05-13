@@ -21,6 +21,14 @@ const STATIC_ASSETS = [
   '/profile'
 ];
 
+// Routes that should never be cached (auth related)
+const NEVER_CACHE_ROUTES = [
+  '/auth',
+  '/reset-password',
+  '/login',
+  '/signup'
+];
+
 // Dynamic assets that should be cached during runtime
 const RUNTIME_CACHE_PATTERNS = [
   /\.(js|css)$/, // JS and CSS files
@@ -151,6 +159,20 @@ function shouldCacheAtRuntime(url) {
     if (url.includes('supabase.co')) {
       return false;
     }
+
+    // Don't cache Vercel Analytics
+    if (url.includes('_vercel/insights')) {
+      return false;
+    }
+    
+    // Check if the URL is a never-cache route
+    const isNeverCacheRoute = NEVER_CACHE_ROUTES.some(route => 
+      urlObj.pathname === route || urlObj.pathname.startsWith(`${route}/`)
+    );
+    
+    if (isNeverCacheRoute) {
+      return false;
+    }
     
     // Check if the URL matches any of our patterns
     return RUNTIME_CACHE_PATTERNS.some(pattern => pattern.test(url));
@@ -241,6 +263,28 @@ self.addEventListener('fetch', (event) => {
 
     // Skip Supabase API requests (let them go to network)
     if (url.hostname.includes('supabase.co')) {
+      return;
+    }
+    
+    // Skip Vercel Analytics requests
+    if (url.pathname.includes('_vercel/insights')) {
+      return;
+    }
+    
+    // Check if this is an auth-related route that should never be cached
+    const isNeverCacheRoute = NEVER_CACHE_ROUTES.some(route => 
+      url.pathname === route || url.pathname.startsWith(`${route}/`)
+    );
+    
+    if (isNeverCacheRoute) {
+      // For auth routes, always use network first and don't cache
+      event.respondWith(
+        fetch(event.request)
+          .catch(() => {
+            return caches.match('/index.html')
+              .then(response => response || new Response('Not available', { status: 503 }));
+          })
+      );
       return;
     }
 
@@ -528,6 +572,74 @@ self.addEventListener('message', (event) => {
         timestamp: Date.now()
       });
     }
+  } else if (event.data && event.data.type === 'AUTH_STATE_CHANGED') {
+    // Handle auth state changes (login/logout)
+    console.log('Auth state changed:', event.data.event);
+    
+    // Clear navigation cache to ensure fresh content after auth state changes
+    caches.open(CACHE_NAME).then((cache) => {
+      const authRelatedUrls = [
+        '/',
+        '/index.html',
+        '/home',
+        '/profile',
+        '/settings',
+        '/admin'
+      ];
+      
+      // Delete these cached entries so they'll be fetched fresh
+      Promise.all(authRelatedUrls.map(url => 
+        cache.delete(new Request(url))
+      )).then(() => {
+        console.log('Cleared auth-related caches');
+        
+        // Notify clients that caches were cleared
+        self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'AUTH_CACHES_CLEARED',
+              timestamp: Date.now()
+            });
+          });
+        });
+      });
+    });
+  } else if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    console.log('CLEAR_ALL_CACHES message received, clearing all caches');
+    
+    // Clear all caches except metadata
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName !== 'sw-metadata')
+          .map((cacheName) => caches.delete(cacheName))
+      );
+    }).then(() => {
+      // Recreate the main cache with static assets
+      return caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(STATIC_ASSETS);
+      });
+    }).then(() => {
+      console.log('All caches cleared and static assets reloaded');
+      
+      // Notify all clients
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'CACHES_CLEARED',
+            timestamp: Date.now()
+          });
+        });
+      });
+      
+      // If this message had a source, respond to it
+      if (event.source) {
+        event.source.postMessage({
+          type: 'CACHES_CLEARED',
+          timestamp: Date.now()
+        });
+      }
+    });
   } else if (event.data && event.data.type === 'SYNC_NOW') {
     console.log('SYNC_NOW message received, attempting immediate sync');
     

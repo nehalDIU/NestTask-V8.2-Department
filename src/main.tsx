@@ -1,7 +1,5 @@
-import { StrictMode, Suspense, lazy } from 'react';
+import React, { StrictMode, Suspense, lazy, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-// Import Analytics only when in production
-import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 // Import CSS (Vite handles this correctly)
 import './index.css';
@@ -32,6 +30,32 @@ const App = lazy(() => import('./App').then(module => {
 const Analytics = import.meta.env.PROD 
   ? lazy(() => import('@vercel/analytics/react').then(mod => ({ default: mod.Analytics })))
   : () => null;
+
+// Simple error boundary component for analytics
+const AnalyticsErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    // Add error event listener for unhandled analytics errors
+    const handler = (event: ErrorEvent) => {
+      if (event.message.includes('_vercel/insights') || 
+          (event.error && event.error.stack && event.error.stack.includes('_vercel/insights'))) {
+        console.log('Caught Vercel Analytics error, suppressing');
+        setHasError(true);
+        event.preventDefault();
+      }
+    };
+    
+    window.addEventListener('error', handler);
+    return () => window.removeEventListener('error', handler);
+  }, []);
+  
+  if (hasError) {
+    return null;
+  }
+  
+  return <>{children}</>;
+};
 
 // Define app routes
 const router = createBrowserRouter([
@@ -273,8 +297,12 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      {/* Only include Analytics in production environment with lazy loading */}
-      {import.meta.env.PROD && <Analytics />}
+      {/* Only include Analytics in production environment with lazy loading and error boundary */}
+      {import.meta.env.PROD && (
+        <AnalyticsErrorBoundary>
+          <Analytics />
+        </AnalyticsErrorBoundary>
+      )}
     </Suspense>
   </StrictMode>
 );
@@ -393,8 +421,33 @@ if ('serviceWorker' in navigator) {
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
     console.log('User signed in');
+    
+    // Notify service worker about auth state change
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'AUTH_STATE_CHANGED',
+        event: 'SIGNED_IN',
+        timestamp: Date.now()
+      });
+      
+      // Also clear all caches to ensure fresh content
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CLEAR_ALL_CACHES',
+        timestamp: Date.now()
+      });
+    }
   } else if (event === 'SIGNED_OUT') {
     console.log('User signed out');
+    
+    // Notify service worker about auth state change
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'AUTH_STATE_CHANGED',
+        event: 'SIGNED_OUT',
+        timestamp: Date.now()
+      });
+    }
+    
     // Clear any user-specific data from memory and storage
     clearCachesForTroubleshooting();
   }

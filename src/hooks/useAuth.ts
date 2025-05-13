@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loginUser, signupUser, logoutUser, resetPassword } from '../services/auth.service';
+import { forceCleanReload, updateAuthStatus } from '../utils/auth';
 import type { User, LoginCredentials, SignupCredentials } from '../types/auth';
 
 // LocalStorage key for saved credentials
@@ -150,6 +151,9 @@ export function useAuth() {
       const user = await loginUser(credentials);
       console.log('User after login:', user);
       
+      // Update auth status in service worker for proper caching
+      updateAuthStatus(true);
+      
       // Special handling for super admin login
       if (credentials.email === 'superadmin@nesttask.com') {
         console.log('Super admin login detected');
@@ -172,6 +176,10 @@ export function useAuth() {
         }
         
         setUser(user);
+        
+        // Force a clean reload to ensure proper page rendering after login
+        setTimeout(() => forceCleanReload(), 1000);
+        
         return user;
       }
       
@@ -225,6 +233,10 @@ export function useAuth() {
       }
       
       setUser(user);
+      
+      // Force a clean reload after login to ensure proper page rendering
+      setTimeout(() => forceCleanReload(), 1000);
+      
       return user;
     } catch (err: any) {
       setError(err.message);
@@ -279,6 +291,9 @@ export function useAuth() {
       // Clear user state first for immediate UI feedback
       setUser(null);
       
+      // Update auth status in service worker for proper caching
+      updateAuthStatus(false);
+      
       // Call the API logout function
       await logoutUser();
       
@@ -299,6 +314,9 @@ export function useAuth() {
       });
       
       console.log('Logout process completed');
+      
+      // Force a clean reload after logout to ensure proper page rendering
+      setTimeout(() => forceCleanReload(), 500);
       
       return true; // Return success
     } catch (err: any) {
