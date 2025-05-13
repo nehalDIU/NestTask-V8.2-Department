@@ -4,77 +4,210 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NestTask - Offline</title>
-  <link rel="icon" type="image/svg+xml" href="/icons/favicon.ico" />
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3B82F6">
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9fafb;
+      color: #111827;
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      margin: 0;
-      padding: 20px;
       text-align: center;
+      padding: 0 1rem;
+    }
+    .dark {
+      background-color: #121212;
+      color: #f3f4f6;
     }
     .container {
-      max-width: 500px;
+      max-width: 480px;
+      width: 100%;
+    }
+    .logo {
+      height: 64px;
+      width: 64px;
+      margin-bottom: 2rem;
+      background-color: #3B82F6;
+      border-radius: 16px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .logo::after {
+      content: "";
+      position: absolute;
+      height: 36px;
+      width: 36px;
       background-color: white;
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
     }
     h1 {
-      color: #4f46e5;
-      margin-bottom: 10px;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
     }
     p {
-      line-height: 1.6;
-      margin-bottom: 20px;
-      color: #666;
+      color: #6b7280;
+      margin-bottom: 2rem;
+      line-height: 1.5;
     }
-    .icon {
-      font-size: 64px;
-      margin-bottom: 20px;
+    .dark p {
+      color: #9ca3af;
     }
-    .button {
-      background-color: #4f46e5;
+    .btn {
+      background-color: #3B82F6;
       color: white;
       border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 0.375rem;
       cursor: pointer;
       transition: background-color 0.2s;
+      display: inline-block;
+      text-decoration: none;
     }
-    .button:hover {
-      background-color: #4338ca;
+    .btn:hover {
+      background-color: #2563eb;
     }
-    .info {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #888;
+    .status {
+      margin-top: 2rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .dark .status {
+      color: #9ca3af;
+    }
+
+    /* Spinner animation */
+    .spinner {
+      margin: 20px auto;
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e0e7ff;
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="icon">📶</div>
-    <h1>You're Offline</h1>
-    <p>Don't worry! NestTask has saved your recent tasks and routines. You can still view your previously loaded content.</p>
-    <p>Some features may be limited until your connection is restored.</p>
-    <button class="button" onclick="window.location.reload()">Try Again</button>
-    <div class="info">
-      <p>If you were previously logged in, you can still access your cached tasks and routines.</p>
-    </div>
+    <div class="logo"></div>
+    <h1>You're offline</h1>
+    <p>It looks like you're offline and unable to connect to NestTask. Check your internet connection and try again.</p>
+    <button class="btn" id="reconnect-btn">Try again</button>
+    <div id="spinner" class="spinner"></div>
+    <p id="status" class="status"></p>
   </div>
 
   <script>
-    // Check if we're back online
+    // Check if we should use dark mode
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark');
+    }
+    
+    // Listen for theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (e.matches) {
+        document.body.classList.add('dark');
+      } else {
+        document.body.classList.remove('dark');
+      }
+    });
+
+    // Function to handle reconnection
+    function attemptReconnect() {
+      const statusEl = document.getElementById('status');
+      const spinner = document.getElementById('spinner');
+      const reconnectBtn = document.getElementById('reconnect-btn');
+      
+      statusEl.textContent = 'Checking connection...';
+      spinner.style.display = 'block';
+      reconnectBtn.disabled = true;
+      
+      const originalPathname = sessionStorage.getItem('originalPathname') || '/';
+      
+      // Special handling for super-admin routes
+      let redirectPath = originalPathname;
+      if (originalPathname.startsWith('/super-admin')) {
+        // For super-admin pages, ensure we force a fresh load
+        sessionStorage.setItem('forceAuthCheck', 'true');
+      }
+
+      // Attempt to fetch the page with a cache buster
+      fetch(redirectPath + (redirectPath.includes('?') ? '&' : '?') + '_cb=' + Date.now())
+        .then(response => {
+          if (response.ok) {
+            statusEl.textContent = 'Connection restored! Redirecting...';
+            // Redirect after a slight delay
+            setTimeout(() => {
+              window.location.href = redirectPath;
+            }, 1000);
+          } else {
+            throw new Error('Network response was not ok');
+          }
+        })
+        .catch(error => {
+          statusEl.textContent = 'Still offline. Please try again later.';
+          spinner.style.display = 'none';
+          reconnectBtn.disabled = false;
+          console.error('Reconnection attempt failed:', error);
+        });
+    }
+    
+    // Store original path for reconnection
+    if (!sessionStorage.getItem('originalPathname')) {
+      sessionStorage.setItem('originalPathname', window.location.pathname);
+    }
+    
+    // Add event listener to the reconnect button
+    document.getElementById('reconnect-btn').addEventListener('click', attemptReconnect);
+    
+    // Automatically attempt reconnection periodically
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    
+    function autoReconnect() {
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        attemptReconnect();
+      }
+    }
+    
+    // Attempt to reconnect every 30 seconds
+    const reconnectInterval = setInterval(() => {
+      if (navigator.onLine) {
+        autoReconnect();
+      }
+    }, 30000);
+    
+    // Clear interval when page is unloaded
+    window.addEventListener('unload', () => {
+      clearInterval(reconnectInterval);
+    });
+    
+    // Listen for online event
     window.addEventListener('online', () => {
-      window.location.reload();
+      document.getElementById('status').textContent = 'Internet connection detected! Attempting to reconnect...';
+      // Wait a moment for connection to stabilize, then try to reconnect
+      setTimeout(attemptReconnect, 2000);
     });
   </script>
 </body>

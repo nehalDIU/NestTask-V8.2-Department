@@ -218,6 +218,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     flowType: 'pkce',
     storage: customStorage,
     storageKey: 'nesttask_supabase_auth',
+    debug: true
   },
   global: {
     headers: {
@@ -231,6 +232,23 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
       eventsPerSecond: 10
+    }
+  }
+});
+
+// Add auth state change listener for improved session handling
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth state change:', event, session?.user?.id);
+  
+  // On refresh, if we're on a super-admin route, force session refresh
+  if (window.location.pathname.startsWith('/super-admin')) {
+    console.log('On super-admin route, ensuring session is fresh');
+    if (session) {
+      // Store that we're on a super-admin route for recovery
+      sessionStorage.setItem('inSuperAdminDashboard', 'true');
+      
+      // Force refresh the token to ensure it's valid
+      supabase.auth.refreshSession();
     }
   }
 });

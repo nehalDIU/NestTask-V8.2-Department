@@ -3,12 +3,14 @@ import { useEffect, useState, memo, useRef } from 'react';
 interface LoadingScreenProps {
   minimumLoadTime?: number;
   showProgress?: boolean;
+  message?: string;
 }
 
 // Using memo for better performance
 export const LoadingScreen = memo(function LoadingScreen({ 
   minimumLoadTime = 300, 
-  showProgress = false 
+  showProgress = false,
+  message
 }: LoadingScreenProps) {
   const [show, setShow] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -89,7 +91,7 @@ export const LoadingScreen = memo(function LoadingScreen({
         </div>
         
         <div className="text-base font-medium text-gray-800/90 dark:text-gray-100/90 mt-3 tracking-wide">
-          NestTask
+          {message || "NestTask"}
         </div>
         
         {showProgress && (

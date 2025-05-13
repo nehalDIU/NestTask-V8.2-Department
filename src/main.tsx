@@ -8,6 +8,7 @@ import { initPWA } from '@/utils/pwa';
 import { prefetchResources, prefetchAsset, prefetchApiData } from '@/utils/prefetch';
 // Use normal import without extension, the path alias will handle it correctly
 import { STORES } from '@/utils/offlineStorage';
+import { sessionRecovery } from '@/utils/sessionRecovery';
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';

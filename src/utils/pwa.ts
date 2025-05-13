@@ -67,6 +67,26 @@ export async function registerServiceWorker() {
       // Set up update handler
       setupUpdateHandler(existingRegistration);
       
+      // Special handling for admin routes on service worker registration
+      if (
+        window.location.pathname.startsWith('/admin') || 
+        window.location.pathname.startsWith('/super-admin')
+      ) {
+        console.log('Admin route detected, ensuring proper service worker setup');
+        
+        // Mark the service worker to prioritize session handling
+        sessionStorage.setItem('adminRoute', 'true');
+        
+        // Communicate with service worker
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'ADMIN_ROUTE',
+            timestamp: Date.now(),
+            path: window.location.pathname
+          });
+        }
+      }
+      
       return existingRegistration;
     }
     
@@ -96,6 +116,26 @@ export async function registerServiceWorker() {
     
     // Set up service worker update handling
     setupUpdateHandler(registration);
+    
+    // Special handling for admin routes on service worker registration
+    if (
+      window.location.pathname.startsWith('/admin') || 
+      window.location.pathname.startsWith('/super-admin')
+    ) {
+      console.log('Admin route detected, ensuring proper service worker setup');
+      
+      // Mark the service worker to prioritize session handling
+      sessionStorage.setItem('adminRoute', 'true');
+      
+      // Communicate with service worker
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'ADMIN_ROUTE',
+          timestamp: Date.now(),
+          path: window.location.pathname
+        });
+      }
+    }
     
     return registration;
   } catch (error) {

@@ -566,7 +566,17 @@ export default function App() {
   }
 
   // Check for super-admin role first
-  if (user.role === 'super-admin') {
+  if (user?.role === 'super-admin') {
+    console.log('[App] Rendering SuperAdminDashboard for super-admin user:', user.id);
+    // Ensure we're on the super-admin path for proper handling on refresh
+    if (!window.location.pathname.startsWith('/super-admin')) {
+      const urlParams = new URLSearchParams(window.location.search);
+      window.history.replaceState(
+        null,
+        'Super Admin Dashboard',
+        `/super-admin?${urlParams.toString()}`
+      );
+    }
     return (
       <Suspense fallback={<LoadingScreen minimumLoadTime={300} />}>
         <SuperAdminDashboard />
