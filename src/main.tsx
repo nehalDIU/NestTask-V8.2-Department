@@ -1,6 +1,7 @@
-import { StrictMode, Suspense, lazy } from 'react';
+import { StrictMode, Suspense, lazy, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Analytics } from '@vercel/analytics/react';
+// Use custom analytics loader instead of the component
+import { safelyLoadAnalytics, setupAnalyticsErrorHandler } from '@/utils/analyticsLoader';
 // Import CSS (Vite handles this correctly)
 import './index.css';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -14,6 +15,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AuthPage } from './pages/AuthPage';
 import { supabase } from './lib/supabase';
+import App from './App';
 
 // Performance optimizations initialization
 const startTime = performance.now();
@@ -22,7 +24,7 @@ const startTime = performance.now();
 performance.mark('app-init-start');
 
 // Lazy load the main App component
-const App = lazy(() => import('./App').then(module => {
+const AppComponent = lazy(() => import('./App').then(module => {
   // Track and log module loading time
   const loadTime = performance.now() - startTime;
   console.debug(`App component loaded in ${loadTime.toFixed(2)}ms`);
@@ -33,12 +35,12 @@ const App = lazy(() => import('./App').then(module => {
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <AppComponent />,
     children: []
   },
   {
     path: '/super-admin/*',
-    element: <App />
+    element: <AppComponent />
   },
   {
     path: '/auth',
@@ -98,6 +100,13 @@ const pwaPromise = Promise.resolve().then(() => {
     initPWA().catch(err => console.error('PWA initialization error:', err));
   }, 1000);
 });
+
+// Initialize analytics with safety measures in production only
+if (import.meta.env.PROD) {
+  setupAnalyticsErrorHandler();
+  // Load analytics after a small delay to prioritize app rendering
+  setTimeout(safelyLoadAnalytics, 2000);
+}
 
 // Enhanced prefetch for resources with priority marking
 const prefetchCriticalResources = () => {
@@ -273,8 +282,7 @@ root.render(
   <StrictMode>
     <Suspense fallback={<LoadingScreen minimumLoadTime={1200} showProgress={true} />}>
       <RouterProvider router={router} />
-      {/* Only include Analytics in production environment */}
-      {import.meta.env.PROD && <Analytics />}
+      {/* Analytics now loaded programmatically via safelyLoadAnalytics */}
     </Suspense>
   </StrictMode>
 );
@@ -399,3 +407,26 @@ supabase.auth.onAuthStateChange((event, session) => {
     clearCachesForTroubleshooting();
   }
 });
+
+// Simple error boundary component to catch Analytics errors
+function ErrorBoundary({ children, fallback }: { children: React.ReactNode, fallback: React.ReactNode }) {
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    // Listen for errors related to Vercel Analytics
+    const handleError = (event: ErrorEvent) => {
+      if (event.message.includes('vercel') || 
+          event.message.includes('insights') || 
+          event.filename?.includes('vercel')) {
+        console.log('Caught Vercel Analytics error, suppressing');
+        setHasError(true);
+        event.preventDefault();
+      }
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+  
+  return hasError ? fallback : children;
+}

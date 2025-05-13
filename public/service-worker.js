@@ -359,6 +359,45 @@ self.addEventListener('fetch', (event) => {
       );
       return;
     }
+
+    // Skip analytics script requests completely if they're blocked
+    if (url.pathname.includes('/_vercel/insights') || url.pathname.includes('/analytics')) {
+      // Check if we have a record of this request being blocked
+      const cacheKey = `blocked:${url.pathname}`;
+      
+      // Use a special cache for tracking blocked URLs
+      caches.open('blocked-requests').then(cache => {
+        cache.match(cacheKey).then(response => {
+          if (response) {
+            // This URL was previously blocked, so respond with an empty response
+            event.respondWith(new Response('', {
+              status: 200,
+              headers: {'Content-Type': 'application/javascript'}
+            }));
+            return;
+          }
+          
+          // Otherwise, let the request proceed but watch for failure
+          const fetchPromise = fetch(event.request).catch(error => {
+            // If the request fails (likely blocked by ad blocker), cache that fact
+            cache.put(cacheKey, new Response('blocked'));
+            
+            // Return empty response
+            return new Response('', {
+              status: 200,
+              headers: {'Content-Type': 'application/javascript'}
+            });
+          });
+          
+          event.respondWith(fetchPromise);
+        });
+      }).catch(error => {
+        // If anything goes wrong with our special handling, just let the request proceed
+        console.error('Error handling analytics request:', error);
+      });
+      
+      return;
+    }
   } catch (error) {
     console.error('Error in fetch handler:', error);
   }
